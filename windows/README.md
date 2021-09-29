@@ -18,6 +18,4 @@ You should replace path_to with the directory where the file is.
 
 Alternatively you can copy and paste the script to Powershell as long as it is
 runnning as an administrator
-=======
-Instructions for Windows.
->>>>>>> parent of abe7552 (Adding PowerShell script and Readme for Windows)
+
