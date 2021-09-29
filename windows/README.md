@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ## Installer Script for NVIDIA GPU Drivers
 
 This script installs the latest supported NVIDIA GPU drivers for Google Cloud
@@ -18,4 +17,3 @@ You should replace path_to with the directory where the file is.
 
 Alternatively you can copy and paste the script to Powershell as long as it is
 runnning as an administrator
-
