@@ -353,6 +353,9 @@ def post_install_steps():
         env_conf.write("# CUDA Toolkit settings" + os.linesep)
         env_conf.write("export PATH=/usr/local/cuda-11/bin:$PATH" + os.linesep)
         env_conf.write("export LD_LIBRARY_PATH=/usr/local/cuda-11/lib64:$LD_LIBRARY_PATH" + os.linesep)
+    # Let's mark that the installation was successful.
+    with open(Logger.LOG_DIR + 'success', mode='w') as success_file:
+        success_file.write("Installation was completed on {}".format(datetime.now()))
 
 
 def run_test(test_path: pathlib.PosixPath, test_bin: str) -> bool:
