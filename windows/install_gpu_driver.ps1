@@ -52,13 +52,15 @@ function Install-Driver {
     Check-Driver
 
     # Create the folder for the driver download
-    New-Item -Path 'C:\' -Name 'NVIDIA-Driver' -ItemType 'directory'
+    if (!(Test-Path -Path 'C:\NVIDIA-Driver')) {
+        New-Item -Path 'C:\' -Name 'NVIDIA-Driver' -ItemType 'directory' | Out-Null
+    }
 
     # Download the file to a specfied directory
     Invoke-WebRequest $url -OutFile $file_dir
 
     # Install the file with the specified path from earlier as well as the RunAs admin option
-    Start-Process -FilePath $file_dir -ArgumentList '/s /n'
+    Start-Process -FilePath $file_dir -ArgumentList '/s /n' -Wait
 }
 
 # Run the functions
