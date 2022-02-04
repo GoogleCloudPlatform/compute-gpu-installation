@@ -24,10 +24,7 @@ import tempfile
 from datetime import datetime
 from enum import Enum, auto
 
-# K80 wspierane przez 470.103.01
 
-
-DRIVER_DOWNLOAD_LINK = "https://us.download.nvidia.com/XFree86/Linux-x86_64/495.46/NVIDIA-Linux-x86_64-495.46.run"
 BASE_URL = "https://us.download.nvidia.com/tesla"
 VERSION = "495.46"
 K80_VERSION = "470.103.01"
@@ -44,11 +41,13 @@ class System(Enum):
     SUSE = auto()
     Ubuntu = auto()
 
+# https://www.if-not-true-then-false.com/2021/install-nvidia-drivers-on-centos-rhel-rocky-linux/
+
 
 # CentOS 7 and RHEL 7 require Python3 to be installed before this script can be run.
 # SLES and RHEL need a reboot after installation to load the driver.
 SUPPORTED_SYSTEMS = {
-    System.CentOS: {"7", "8"},
+    System.CentOS: {"7"},  # CentOS 8 is dead: https://www.centos.org/centos-linux-eol/
     System.Debian: {"10", "11"},
     System.Fedora: set(),
     System.RHEL: {"7", "8"},
@@ -136,12 +135,18 @@ def run(command: str, check=True, input=None, cwd=None, silent=False, environmen
     return proc
 
 
-def detect_gpu_device() -> bool:
+def detect_gpu_device():
     """
     Check if there is a GPU device attached.
     """
     lspci = run('lspci')
-    return "controller: NVIDIA Corporation" in lspci.stdout.decode()
+    output = lspci.stdout.decode()
+    if "controller: NVIDIA Corporation" not in output:
+        return None
+    if "Tesla K80" in output:
+        return "K80"
+
+    return "OTHER"
 
 
 def check_python_version():
@@ -224,7 +229,7 @@ def check_driver_installed() -> bool:
     return process.returncode == 0
 
 
-def install_dependencies_centos_rhel(system: System, version: str):
+def install_dependencies_centos_rhel_rocky(system: System, version: str):
     """
     Installs required kernel-related packages and pciutils for CentOS and RHEL.
     """
@@ -239,8 +244,17 @@ def install_dependencies_centos_rhel(system: System, version: str):
     if "already installed" not in kernel_install.stdout.decode():
         run("reboot")  # Restart the system after installing the kernel modules
         sys.exit(0)
-    run(f"{binary} install -y kernel-devel-{kernel_version} "
-        f"kernel-headers-{kernel_version} pciutils gcc make")
+    if system == System.Rocky:
+        run("dnf config-manager --set-enabled powertools")
+    elif system == System.CentOS and version.startswith("8"):
+        run("dnf config-manager --set-enabled powertools")
+        run("dnf install epel-release epel-next-release")
+    elif system == System.RHEL and version.startswith("8"):
+        run("dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm")
+
+    run(f"{binary} install -y kernel-devel epel-release "
+        f"kernel-headers pciutils gcc make dkms acpid "
+        f"libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig")
     return
 
 
@@ -260,8 +274,8 @@ def install_dependencies(system: System, version: str):
     This function may restart the system after installing some of the packages,
     in such situations the script should just be started again.
     """
-    if system in (System.CentOS, System.RHEL):
-        install_dependencies_centos_rhel(system, version)
+    if system in (System.CentOS, System.RHEL, System.Rocky):
+        install_dependencies_centos_rhel_rocky(system, version)
         return
     elif system in (System.Debian, System.Ubuntu):
         install_dependencies_debian_ubuntu(system, version)
@@ -289,6 +303,15 @@ def install_driver(system: System, version: str):
         install_driver_debian()
     else:
         raise RuntimeError("Unsupported operating system.")
+
+
+def install_driver_runfile():
+    if detect_gpu_device() == 'K80':
+        run("curl -fSsl -O https://us.download.nvidia.com/tesla/470.103.01/NVIDIA-Linux-x86_64-470.103.01.run")
+        run("sh NVIDIA-Linux-x86_64-470.103.01.run -s")
+    else:
+        run("curl -fSsl -O https://us.download.nvidia.com/XFree86/Linux-x86_64/495.46/NVIDIA-Linux-x86_64-495.46.run")
+        run("sh NVIDIA-Linux-x86_64-495.46.run -s")
 
 
 def install_driver_centos(version: str):
