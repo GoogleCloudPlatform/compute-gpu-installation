@@ -24,6 +24,16 @@ import tempfile
 from datetime import datetime
 from enum import Enum, auto
 
+# K80 wspierane przez 470.103.01
+
+
+DRIVER_DOWNLOAD_LINK = "https://us.download.nvidia.com/XFree86/Linux-x86_64/495.46/NVIDIA-Linux-x86_64-495.46.run"
+BASE_URL = "https://us.download.nvidia.com/tesla"
+VERSION = "495.46"
+K80_VERSION = "470.103.01"
+FINAL_URL = f"{BASE_URL}/{VERSION}/NVIDIA-Linux-x86_64-{VERSION}.run"
+K80_FINAL_URL = f"{BASE_URL}/{K80_VERSION}/NVIDIA-Linux-x86_64-{K80_VERSION}.run"
+
 
 class System(Enum):
     CentOS = auto()
@@ -128,8 +138,7 @@ def run(command: str, check=True, input=None, cwd=None, silent=False, environmen
 
 def detect_gpu_device() -> bool:
     """
-    Check the type of GPU device we want drivers for. Currently we only care if
-    it's A100 or something else.
+    Check if there is a GPU device attached.
     """
     lspci = run('lspci')
     return "controller: NVIDIA Corporation" in lspci.stdout.decode()
@@ -139,7 +148,7 @@ def check_python_version():
     """
     Makes sure that the script is run with Python 3.6 or newer.
     """
-    if sys.version_info.major == 3 and sys.version_info.minor in (6, 7, 8, 9, 10):
+    if sys.version_info.major == 3 and sys.version_info.minor > 6:
         return
     version = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
     raise RuntimeError("Unsupported Python version {}. "
@@ -231,7 +240,7 @@ def install_dependencies_centos_rhel(system: System, version: str):
         run("reboot")  # Restart the system after installing the kernel modules
         sys.exit(0)
     run(f"{binary} install -y kernel-devel-{kernel_version} "
-        f"kernel-headers-{kernel_version} pciutils")
+        f"kernel-headers-{kernel_version} pciutils gcc make")
     return
 
 
@@ -241,7 +250,7 @@ def install_dependencies_debian_ubuntu(system: System, version: str):
     """
     kernel_version = run("uname -r").stdout.decode().strip()
     run(f"apt install -y linux-headers-{kernel_version} "
-        "software-properties-common pciutils")
+        "software-properties-common pciutils gcc make")
     return
 
 
