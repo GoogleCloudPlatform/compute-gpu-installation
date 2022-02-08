@@ -23,11 +23,8 @@ from datetime import datetime
 from enum import Enum, auto
 
 
-BASE_URL = "https://us.download.nvidia.com/tesla"
-VERSION = "495.46"
-K80_VERSION = "470.103.01"
-FINAL_URL = f"{BASE_URL}/{VERSION}/NVIDIA-Linux-x86_64-{VERSION}.run"
-K80_FINAL_URL = f"{BASE_URL}/{K80_VERSION}/NVIDIA-Linux-x86_64-{K80_VERSION}.run"
+DRIVER_URL = "https://us.download.nvidia.com/XFree86/Linux-x86_64/495.46/NVIDIA-Linux-x86_64-495.46.run"
+K80_DRIVER_URL = "https://us.download.nvidia.com/tesla/470.103.01/NVIDIA-Linux-x86_64-470.103.01.run"
 
 
 class System(Enum):
@@ -39,10 +36,8 @@ class System(Enum):
     SUSE = auto()
     Ubuntu = auto()
 
-# https://www.if-not-true-then-false.com/2021/install-nvidia-drivers-on-centos-rhel-rocky-linux/
 
-
-# CentOS 7 and RHEL 7 require Python3 to be installed before this script can be run.
+# CentOS 7 and RHEL 7 may require Python3 to be installed before this script can be run.
 # SLES and RHEL need a reboot after installation to load the driver.
 SUPPORTED_SYSTEMS = {
     # CentOS 8 is dead: https://www.centos.org/centos-linux-eol/, but there's CentOS Stream 8
@@ -153,7 +148,7 @@ def check_python_version():
     """
     Makes sure that the script is run with Python 3.6 or newer.
     """
-    if sys.version_info.major == 3 and sys.version_info.minor > 6:
+    if sys.version_info.major == 3 and sys.version_info.minor >= 6:
         return
     version = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
     raise RuntimeError("Unsupported Python version {}. "
@@ -304,10 +299,10 @@ def install_dependencies(system: System, version: str):
 
 def install_driver_runfile():
     if detect_gpu_device() == 'Tesla K80':
-        run("curl -fSsl -O https://us.download.nvidia.com/tesla/470.103.01/NVIDIA-Linux-x86_64-470.103.01.run")
+        run(f"curl -fSsl -O {K80_DRIVER_URL}")
         run("sh NVIDIA-Linux-x86_64-470.103.01.run -s")
     else:
-        run("curl -fSsl -O https://us.download.nvidia.com/XFree86/Linux-x86_64/495.46/NVIDIA-Linux-x86_64-495.46.run")
+        run(f"curl -fSsl -O {DRIVER_URL}")
         run("sh NVIDIA-Linux-x86_64-495.46.run -s")
 
 
@@ -315,15 +310,8 @@ def post_install_steps():
     """
     Write the success message to log.
     """
-    with open(INSTALLER_DIR + 'success', mode='w') as success_file:
+    with open(INSTALLER_DIR / 'success', mode='w') as success_file:
         success_file.write("Installation was completed on {}".format(datetime.now()))
-
-
-def verify_installation():
-    """
-    Try running nvidia-smi to check if it detects the graphics card.
-    """
-
 
 
 def parse_args():
@@ -336,6 +324,32 @@ def parse_args():
     return args
 
 
+def install(args: argparse.Namespace):
+    # Prerequisites
+    check_python_version()
+    if os.geteuid() != 0:
+        print("This script needs to be run with root privileges!")
+        sys.exit(1)
+
+    # Set up the log directory.
+    Logger.setup_log_dir()
+
+    if check_driver_installed() and not args.force:
+        print('Already installed.')
+        sys.exit(0)
+
+    # Check what system we're running
+    system, version = detect_linux_distro()
+    # Install the drivers and CUDA Toolkit
+    install_dependencies(system, version)
+    if not detect_gpu_device() and not args.force:
+        print("There doesn't seem to be a GPU unit connected to your system. "
+              "Aborting drivers installation.")
+        sys.exit(0)
+    install_driver_runfile()
+    post_install_steps()
+
+
 def main():
     """
     Main function of the installation script.
@@ -343,31 +357,13 @@ def main():
     args = parse_args()
 
     if args.action == 'verify':
-        verify_installation()
+        if not check_driver_installed():
+            print("The driver is not installed.")
+        else:
+            print("The driver seems to be installed. Run `nvidia-smi` to check details.")
+        return
     elif args.action == 'install':
-        # Prerequisites
-        check_python_version()
-        if os.geteuid() != 0:
-            print("This script needs to be run with root privileges!")
-            sys.exit(1)
-
-        # Set up the log directory.
-        Logger.setup_log_dir()
-
-        if check_driver_installed() and not args.force:
-            print('Already installed.')
-            sys.exit(0)
-
-        # Check what system we're running
-        system, version = detect_linux_distro()
-        # Install the drivers and CUDA Toolkit
-        install_dependencies(system, version)
-        if not detect_gpu_device() and not args.force:
-            print("There doesn't seem to be a GPU unit connected to your system. "
-                  "Aborting drivers installation.")
-            sys.exit(0)
-        install_driver_runfile()
-        post_install_steps()
+        install(args)
 
 
 if __name__ == '__main__':

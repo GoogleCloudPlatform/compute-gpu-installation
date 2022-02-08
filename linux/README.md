@@ -6,7 +6,7 @@ instances.
 
 The script support the following operating systems:
 
-* CentOS: versions 7 
+* CentOS: versions 7
 * CentOS Stream: version 8
 * Debian: versions 10 and 11
 * RHEL: versions 7 and 8
@@ -34,7 +34,7 @@ requirements:
 The `install_gpu_driver.py` script needs to be executed with root privileges
 (for example `sudo python3 install_gpu_driver.py`).
 
-Note: On CentOS and RHEL systems the script might trigger system reboot, it
+Note: On some systems the script might trigger system reboot, it
 needs to be restarted after the reboot is done.
 
 After the installation, you should restart your system to make sure everything
