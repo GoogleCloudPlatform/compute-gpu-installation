@@ -13,16 +13,18 @@
 # limitations under the License.
 import argparse
 import atexit
-import glob
 import os
 import pathlib
 import re
 import shlex
 import subprocess
 import sys
-import tempfile
 from datetime import datetime
 from enum import Enum, auto
+
+
+DRIVER_URL = "https://us.download.nvidia.com/XFree86/Linux-x86_64/495.46/NVIDIA-Linux-x86_64-495.46.run"
+K80_DRIVER_URL = "https://us.download.nvidia.com/tesla/470.103.01/NVIDIA-Linux-x86_64-470.103.01.run"
 
 
 class System(Enum):
@@ -35,24 +37,28 @@ class System(Enum):
     Ubuntu = auto()
 
 
-# CentOS 7 and RHEL 7 require Python3 to be installed before this script can be run.
+# CentOS 7 and RHEL 7 may require Python3 to be installed before this script can be run.
 # SLES and RHEL need a reboot after installation to load the driver.
 SUPPORTED_SYSTEMS = {
+    # CentOS 8 is dead: https://www.centos.org/centos-linux-eol/, but there's CentOS Stream 8
     System.CentOS: {"7", "8"},
     System.Debian: {"10", "11"},
     System.Fedora: set(),
     System.RHEL: {"7", "8"},
-    System.Rocky: set(),
-    System.SUSE: {"15"},
-    System.Ubuntu: {"18", "20"}
+    System.Rocky: {"8"},
+    System.SUSE: set(),
+    System.Ubuntu: {"18", "20", "21"}
 }
+
+INSTALLER_DIR = pathlib.Path('/opt/google/gpu-installer/')
+DEPENDENCIES_INSTALLED_FLAG = INSTALLER_DIR / 'deps_installed.flag'
+INSTALLER_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class Logger:
-    LOG_DIR = '/opt/google/gpu-installer/'
-    STDOUT_LOG = LOG_DIR + 'out.log'
+    STDOUT_LOG = INSTALLER_DIR / 'out.log'
     STDOUT_LOG_F = None
-    STDERR_LOG = LOG_DIR + 'err.log'
+    STDERR_LOG = INSTALLER_DIR / 'err.log'
     STDERR_LOG_F = None
 
     @classmethod
@@ -68,9 +74,8 @@ class Logger:
         """
         Create the LOG_DIR path and STD(OUT|ERR)_LOG files.
         """
-        pathlib.Path(cls.LOG_DIR).mkdir(parents=True, exist_ok=True)
-        pathlib.Path(cls.STDOUT_LOG).touch(exist_ok=True)
-        pathlib.Path(cls.STDERR_LOG).touch(exist_ok=True)
+        cls.STDOUT_LOG.touch(exist_ok=True)
+        cls.STDERR_LOG.touch(exist_ok=True)
 
         cls.STDOUT_LOG_F = open(cls.STDOUT_LOG, mode='a')
         cls.STDERR_LOG_F = open(cls.STDERR_LOG, mode='a')
@@ -126,20 +131,24 @@ def run(command: str, check=True, input=None, cwd=None, silent=False, environmen
     return proc
 
 
-def detect_gpu_device() -> bool:
+def detect_gpu_device():
     """
-    Check the type of GPU device we want drivers for. Currently we only care if
-    it's A100 or something else.
+    Check if there is a GPU device attached.
     """
     lspci = run('lspci')
-    return "controller: NVIDIA Corporation" in lspci.stdout.decode()
+    output = lspci.stdout.decode()
+    for line in output.splitlines():
+        if "controller: NVIDIA Corporation" in line:
+            return re.findall("\[([\w\d\s]+)]", line)[0]
+    else:
+        return None
 
 
 def check_python_version():
     """
     Makes sure that the script is run with Python 3.6 or newer.
     """
-    if sys.version_info.major == 3 and sys.version_info.minor in (6, 7, 8, 9, 10):
+    if sys.version_info.major == 3 and sys.version_info.minor >= 6:
         return
     version = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
     raise RuntimeError("Unsupported Python version {}. "
@@ -215,24 +224,44 @@ def check_driver_installed() -> bool:
     return process.returncode == 0
 
 
-def install_dependencies_centos_rhel(system: System, version: str):
+def install_dependencies_centos_rhel_rocky(system: System, version: str):
     """
     Installs required kernel-related packages and pciutils for CentOS and RHEL.
     """
-    kernel_version = run("uname -r").stdout.decode().strip()
-
     if version.startswith("8"):
         binary = "dnf"
     else:
         binary = "yum"
     run(f"{binary} clean all")
+    run(f"{binary} update -y")
     kernel_install = run(f"{binary} install -y kernel")
     if "already installed" not in kernel_install.stdout.decode():
         run("reboot")  # Restart the system after installing the kernel modules
         sys.exit(0)
-    run(f"{binary} install -y kernel-devel-{kernel_version} "
-        f"kernel-headers-{kernel_version} pciutils")
+    if system == System.Rocky:
+        run("dnf config-manager --set-enabled powertools")
+        run("dnf install -y epel-release")
+    elif system == System.CentOS and version.startswith("8"):
+        run("dnf config-manager --set-enabled powertools")
+        run("dnf install -y epel-release epel-next-release")
+    elif system == System.RHEL and version.startswith("8"):
+        run("dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm")
+    elif system in (System.RHEL, System.CentOS) and version.startswith("9"):
+        run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-next-release-9-1.el9.next.noarch.rpm")
+        run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-release-9-1.el9.next.noarch.rpm")
+
+    run(f"{binary} install -y kernel-devel epel-release "
+        f"kernel-headers pciutils gcc make dkms acpid "
+        f"libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig")
     return
+
+
+def install_dependencies_sles(system: System, version: str):
+    # zypper install gcc make kernel-devel kernel-source
+    # zypper install -t pattern devel_C_C++ devel_kernel
+    # zypper install dkms
+    pass
+    # For now, there is not SLES script working.
 
 
 def install_dependencies_debian_ubuntu(system: System, version: str):
@@ -240,8 +269,9 @@ def install_dependencies_debian_ubuntu(system: System, version: str):
     Installs kernel-related packages and pciutils for Debian and Ubuntu.
     """
     kernel_version = run("uname -r").stdout.decode().strip()
+    run("apt update")
     run(f"apt install -y linux-headers-{kernel_version} "
-        "software-properties-common pciutils")
+        "software-properties-common pciutils gcc make")
     return
 
 
@@ -251,156 +281,37 @@ def install_dependencies(system: System, version: str):
     This function may restart the system after installing some of the packages,
     in such situations the script should just be started again.
     """
-    if system in (System.CentOS, System.RHEL):
-        install_dependencies_centos_rhel(system, version)
+    if DEPENDENCIES_INSTALLED_FLAG.is_file():
         return
+
+    if system in (System.CentOS, System.RHEL, System.Rocky):
+        install_dependencies_centos_rhel_rocky(system, version)
     elif system in (System.Debian, System.Ubuntu):
         install_dependencies_debian_ubuntu(system, version)
-        return
     elif system == System.SUSE:
-        return
+        install_dependencies_sles(system, version)
     else:
         raise RuntimeError("Unsupported operating system!")
 
+    with DEPENDENCIES_INSTALLED_FLAG.open(mode='w') as flag:
+        flag.write('1')
 
-def install_driver(system: System, version: str):
-    """
-    Installs the GPU driver. The installation instructions are taken from
-    https://developer.nvidia.com/cuda-downloads
-    """
-    if system == System.CentOS:
-        install_driver_centos(version)
-    elif system == System.RHEL:
-        install_driver_rhel(version)
-    elif system == System.SUSE:
-        install_driver_suse()
-    elif system == System.Ubuntu:
-        install_driver_ubuntu(version)
-    elif system == System.Debian:
-        install_driver_debian()
+
+def install_driver_runfile():
+    if detect_gpu_device() == 'Tesla K80':
+        run(f"curl -fSsl -O {K80_DRIVER_URL}")
+        run("sh NVIDIA-Linux-x86_64-470.103.01.run -s")
     else:
-        raise RuntimeError("Unsupported operating system.")
-
-
-def install_driver_centos(version: str):
-    if version.startswith("7"):
-        run("yum install -y yum-utils epel-release")
-        run("yum-config-manager --add-repo "
-            "https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo")
-        run("yum clean all")
-        run("yum install -y nvidia-driver-latest-dkms cuda")
-        run("yum install -y cuda-drivers")
-        return
-    else:
-        run("dnf -y install epel-release")
-        run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
-        run("dnf clean all")
-        run("dnf -y module install nvidia-driver:latest-dkms")
-        run("dnf -y install cuda")
-        return
-
-
-def install_driver_debian():
-    run(f"apt-key adv --fetch-keys "
-        f"https://developer.download.nvidia.com/compute/cuda/repos/debian10/x86_64/7fa2af80.pub")
-    run(f'add-apt-repository "deb '
-        f'https://developer.download.nvidia.com/compute/cuda/repos/debian10/x86_64/ /"')
-    run(f'add-apt-repository contrib')
-    run("apt update")
-    env = os.environ.copy()
-    env['DEBIAN_FRONTEND'] = 'noninteractive'
-    run("apt install -y cuda", environment=env)
-
-
-def install_driver_ubuntu(version):
-    version_nodot = "".join(version.split("."))
-    run(f"curl -O https://developer.download.nvidia.com/compute/cuda/repos/ubuntu{version_nodot}/x86_64/cuda-ubuntu{version_nodot}.pin")
-    run(f"mv cuda-ubuntu{version_nodot}.pin /etc/apt/preferences.d/cuda-repository-pin-600")
-    run(f"apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu{version_nodot}/x86_64/7fa2af80.pub")
-    run(f'add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu{version_nodot}/x86_64/ /"')
-    run("apt update")
-    run("apt install -y cuda")
-
-
-def install_driver_suse():
-    run("zypper addrepo https://developer.download.nvidia.com/compute/cuda/repos/sles15/x86_64/cuda-sles15.repo")
-    run("zypper --gpg-auto-import-keys refresh")
-    run("zypper install -y cuda")
-
-
-def install_driver_rhel(version):
-    if version.startswith("7"):
-        run("yum install -y yum-utils epel-release")
-        run("yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo")
-        run("yum clean all")
-        run("yum -y install nvidia-driver-latest-dkms cuda")
-        run("yum -y install cuda-drivers")
-    else:
-        run("dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm")
-        run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
-        run("dnf clean all")
-        run("dnf -y module install nvidia-driver:latest-dkms")
-        run("dnf -y install cuda")
+        run(f"curl -fSsl -O {DRIVER_URL}")
+        run("sh NVIDIA-Linux-x86_64-495.46.run -s")
 
 
 def post_install_steps():
     """
-    Execute post-installation steps as described on
-    https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions
+    Write the success message to log.
     """
-    # Update PATH and LD_LIBRARY_PATH env variables for everyone
-    with open('/etc/profile.d/cuda.sh', mode='w') as env_conf:
-        env_conf.write("# CUDA Toolkit settings" + os.linesep)
-        env_conf.write("export PATH=/usr/local/cuda-11/bin:$PATH" + os.linesep)
-        env_conf.write("export LD_LIBRARY_PATH=/usr/local/cuda-11/lib64:$LD_LIBRARY_PATH" + os.linesep)
-    # Let's mark that the installation was successful.
-    with open(Logger.LOG_DIR + 'success', mode='w') as success_file:
+    with open(INSTALLER_DIR / 'success', mode='w') as success_file:
         success_file.write("Installation was completed on {}".format(datetime.now()))
-
-
-def run_test(test_path: pathlib.PosixPath, test_bin: str) -> bool:
-    print(f"Building {test_bin} test...")
-    make = run("make", cwd=test_path, silent=True)
-    if ">>> Waiving build. Minimum GCC version required is" in make.stdout.decode():
-        # RHEL 7 and CentOS 7 have GCC in version 4.8, which is too low for some tests
-        print(f"Skipping {test_bin} test, as it requires newer version of GCC: ")
-        print(make.stdout.decode().splitlines()[0])
-        return True
-    print(f"Running the {test_bin} test...")
-    dev_query = run(str((test_path / test_bin).absolute()), cwd=test_path, silent=True)
-    out = dev_query.stdout.decode()
-    print(out)
-    print(dev_query.stderr.decode())
-    if "Result = PASS" in out:
-        print(f"{test_bin} test passed.")
-        return True
-    else:
-        print(f"{test_bin} test failed!")
-        return False
-
-
-def verify_installation():
-    """
-    Compile sample programs provided by NVIDIA to check if the installation was successful.
-    """
-    try:
-        sample_install_script = glob.glob("/usr/local/cuda-11/bin/cuda-install-samples*.sh")[0]
-        cuda_version = re.findall(r"cuda-install-samples-(\d+\.\d+)\.sh", sample_install_script)[0]
-    except IndexError:
-        raise RuntimeError("Couldn't find the cuda-install-samples script to validate installation!")
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        print(f"Setting up CUDA samples in {tmp_dir}...")
-        run(f"{sample_install_script} {tmp_dir}", silent=True)
-        sample_dir = pathlib.PosixPath(tmp_dir, f"NVIDIA_CUDA-{cuda_version}_Samples")
-
-        dev_query_path = sample_dir / "1_Utilities" / "deviceQuery"
-        bandwidth_test_path = sample_dir / "1_Utilities" / "bandwidthTest"
-        passed = True
-        passed &= run_test(dev_query_path, "deviceQuery")
-        passed &= run_test(bandwidth_test_path, "bandwidthTest")
-
-    sys.exit(0 if passed else 1)
 
 
 def parse_args():
@@ -413,6 +324,32 @@ def parse_args():
     return args
 
 
+def install(args: argparse.Namespace):
+    # Prerequisites
+    check_python_version()
+    if os.geteuid() != 0:
+        print("This script needs to be run with root privileges!")
+        sys.exit(1)
+
+    # Set up the log directory.
+    Logger.setup_log_dir()
+
+    if check_driver_installed() and not args.force:
+        print('Already installed.')
+        sys.exit(0)
+
+    # Check what system we're running
+    system, version = detect_linux_distro()
+    # Install the drivers and CUDA Toolkit
+    install_dependencies(system, version)
+    if not detect_gpu_device() and not args.force:
+        print("There doesn't seem to be a GPU unit connected to your system. "
+              "Aborting drivers installation.")
+        sys.exit(0)
+    install_driver_runfile()
+    post_install_steps()
+
+
 def main():
     """
     Main function of the installation script.
@@ -420,31 +357,13 @@ def main():
     args = parse_args()
 
     if args.action == 'verify':
-        verify_installation()
+        if not check_driver_installed():
+            print("The driver is not installed.")
+        else:
+            print("The driver seems to be installed. Run `nvidia-smi` to check details.")
+        return
     elif args.action == 'install':
-        # Prerequisites
-        check_python_version()
-        if os.geteuid() != 0:
-            print("This script needs to be run with root privileges!")
-            sys.exit(1)
-
-        # Set up the log directory.
-        Logger.setup_log_dir()
-
-        if check_driver_installed() and not args.force:
-            print('Already installed.')
-            sys.exit(0)
-
-        # Check what system we're running
-        system, version = detect_linux_distro()
-        # Install the drivers and CUDA Toolkit
-        install_dependencies(system, version)
-        if not detect_gpu_device() and not args.force:
-            print("There doesn't seem to be a GPU unit connected to your system. "
-                  "Aborting drivers installation.")
-            sys.exit(0)
-        install_driver(system, version)
-        post_install_steps()
+        install(args)
 
 
 if __name__ == '__main__':
