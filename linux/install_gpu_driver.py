@@ -139,7 +139,8 @@ def detect_gpu_device():
     output = lspci.stdout.decode()
     for line in output.splitlines():
         if "controller: NVIDIA Corporation" in line:
-            return re.findall("\[([\w\d\s]+)]", line)[0]
+            driver_name = re.findall("\[([\w\d\s]+)]", line)
+            return driver_name[0] if driver_name else True
     else:
         return None
 
