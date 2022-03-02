@@ -21,10 +21,12 @@ import subprocess
 import sys
 from datetime import datetime
 from enum import Enum, auto
-
+from typing import Optional
 
 DRIVER_URL = "https://us.download.nvidia.com/XFree86/Linux-x86_64/495.46/NVIDIA-Linux-x86_64-495.46.run"
 K80_DRIVER_URL = "https://us.download.nvidia.com/tesla/470.103.01/NVIDIA-Linux-x86_64-470.103.01.run"
+
+TESLA_K80_DEVICE_CODE = "10de:102d"
 
 
 class System(Enum):
@@ -131,15 +133,17 @@ def run(command: str, check=True, input=None, cwd=None, silent=False, environmen
     return proc
 
 
-def detect_gpu_device():
+def detect_gpu_device() -> Optional[str]:
     """
-    Check if there is a GPU device attached.
+    Check if there is an NVIDIA GPU device attached and return its device code.
     """
-    lspci = run('lspci')
+    lspci = run('lspci -n')
     output = lspci.stdout.decode()
+    dev_re = re.compile(r"10de:[\w\d]{4}")
     for line in output.splitlines():
-        if "controller: NVIDIA Corporation" in line:
-            return re.findall("\[([\w\d\s]+)]", line)[0]
+        dev_code = dev_re.findall(line)
+        if dev_code:
+            return dev_code[0]
     else:
         return None
 
@@ -298,7 +302,7 @@ def install_dependencies(system: System, version: str):
 
 
 def install_driver_runfile():
-    if detect_gpu_device() == 'Tesla K80':
+    if detect_gpu_device() == TESLA_K80_DEVICE_CODE:
         run(f"curl -fSsl -O {K80_DRIVER_URL}")
         run("sh NVIDIA-Linux-x86_64-470.103.01.run -s")
     else:
