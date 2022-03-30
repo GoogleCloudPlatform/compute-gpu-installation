@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
+import subprocess
+from pathlib import Path
 
 import pytest
 import uuid
@@ -78,7 +80,7 @@ def get_image_from_family(project: str, family: str) -> compute_v1.Image:
     return newest_image
 
 
-def get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk:
+def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk:
     boot_disk = compute_v1.AttachedDisk()
     initialize_params = compute_v1.AttachedDiskInitializeParams()
     initialize_params.source_image = source_image_link
@@ -99,9 +101,12 @@ def test_install_driver():
     zone = ZONES[gpu]
 
     op_sys_image = get_image_from_family(*opsys)
-    disks = [get_boot_disk(op_sys_image.self_link, zone)]
+    disks = [_get_boot_disk(op_sys_image.self_link, zone)]
 
-    # Use the network interface provided in the network_link argument.
+    # We do not configure external IP to save on the billing,
+    # but the project you try to run this tests in needs to
+    # have a Cloud NAT configured, so the instances can
+    # download the drivers.
     network_interface = compute_v1.NetworkInterface()
     network_interface.name = "global/networks/default"
 
@@ -112,10 +117,25 @@ def test_install_driver():
 
     instance = compute_v1.Instance()
     instance.machine_type = f"zones/{zone}/machineTypes/{MACHINE_TYPES[gpu]}"
-    instance_name = f"gpu-test-{opsys[1]}-{gpu}-" + uuid.uuid4()[:10]
+    instance_name = f"gpu-test-{opsys[1]}-{gpu}-".lower() + uuid.uuid4().hex[:10]
     instance.name = instance_name
     instance.disks = disks
-    instance.accelerators = [accelerator]
+    instance.guest_accelerators = [accelerator]
+    instance.network_interfaces = [network_interface]
+
+    # Instance with GPU has to have LiveMigration disabled
+    instance.scheduling = compute_v1.Scheduling()
+    instance.scheduling.automatic_restart = False
+    instance.scheduling.on_host_maintenance = compute_v1.Scheduling.OnHostMaintenance.TERMINATE.name
+    instance.scheduling.preemptible = False
+
+    # Set the startup script to install the drivers
+    instance.metadata = compute_v1.Metadata()
+    meta_item = compute_v1.Items()
+    meta_item.key = 'startup-script'
+    with open(Path(__file__).parent / '../startup_script.sh') as script:
+        meta_item.value = script.read()
+    instance.metadata.items = [meta_item]
 
     # Prepare the request to insert an instance.
     request = compute_v1.InsertInstanceRequest()
@@ -124,16 +144,29 @@ def test_install_driver():
     request.instance_resource = instance
 
     instance_client = compute_v1.InstancesClient()
-    operation = instance_client.insert_unary(request)
     operation_client = compute_v1.ZoneOperationsClient()
-    operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
 
-    if operation.error:
-        print(f"Error during instance {instance_name} creation:", operation.error, file=sys.stderr)
-        raise RuntimeError(operation.error)
+    try:
+        operation = instance_client.insert_unary(request)
+        operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
 
-    if operation.warnings:
-        print(f"Warnings during instance {instance_name} creation:\n", file=sys.stderr)
-        for warning in operation.warnings:
-            print(f" - {warning.code}: {warning.message}", file=sys.stderr)
+        if operation.error:
+            print(f"Error during instance {instance_name} creation:", operation.error, file=sys.stderr)
+            raise RuntimeError(operation.error)
 
+        if operation.warnings:
+            print(f"Warnings during instance {instance_name} creation:\n", file=sys.stderr)
+            for warning in operation.warnings:
+                print(f" - {warning.code}: {warning.message}", file=sys.stderr)
+
+        # TODO: Execute test here!
+    finally:
+        # operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
+        # operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+        pass
+
+
+def _test_body(zone: str, instance_name: str):
+    """
+    Execute the proper checks to see if the instance got the GPU drivers properly installed.
+    """
