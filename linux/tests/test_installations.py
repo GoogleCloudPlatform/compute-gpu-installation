@@ -11,16 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
+import os
 import sys
 import subprocess
+import tempfile
+import time
 from pathlib import Path
+from typing import Tuple
 
 import pytest
 import uuid
+import google.api_core.exceptions
 import google.auth
 from google.cloud import compute_v1
 
 PROJECT = google.auth.default()[1]
+
+INSTALLATION_TIMEOUT = 600  # 10 minutes
 
 # Cloud project and family
 OPERATING_SYSTEMS = (
@@ -34,7 +42,6 @@ OPERATING_SYSTEMS = (
     ("ubuntu-os-cloud", "ubuntu-2004-lts"),
     ("ubuntu-os-cloud", "ubuntu-1804-lts"),
     ("ubuntu-os-cloud", "ubuntu-2110"),
-
 )
 
 GPUS = {
@@ -63,6 +70,21 @@ MACHINE_TYPES = {
     "P100": "n1-standard-8",
     "V100": "n1-standard-8",
 }
+
+
+@pytest.fixture(scope='module')
+def ssh_key():
+    tmp_file = tempfile.NamedTemporaryFile()
+    process = subprocess.run(
+        ["ssh-keygen", "-b", "4096", "-f", tmp_file.name, "-N", ""],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        input="y",
+        text=True,
+        timeout=10
+    )
+    yield tmp_file.name
+    os.unlink(tmp_file.name + '.pub')
 
 
 def get_image_from_family(project: str, family: str) -> compute_v1.Image:
@@ -94,10 +116,10 @@ def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk
     return boot_disk
 
 
-def test_install_driver():
-    opsys = OPERATING_SYSTEMS[0]
-    gpu = 'V100'
-
+@pytest.mark.parametrize("opsys,gpu", itertools.product(OPERATING_SYSTEMS, GPUS))
+def test_install_driver(ssh_key: str, opsys: Tuple[str, str], gpu: str):
+    # opsys = OPERATING_SYSTEMS[0]
+    # gpu = 'A100'
     zone = ZONES[gpu]
 
     op_sys_image = get_image_from_family(*opsys)
@@ -159,14 +181,68 @@ def test_install_driver():
             for warning in operation.warnings:
                 print(f" - {warning.code}: {warning.message}", file=sys.stderr)
 
-        # TODO: Execute test here!
+        _test_body(zone, instance_name, gpu, ssh_key)
     finally:
-        # operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
-        # operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
         pass
+        try:
+            operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
+            operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+        except google.api_core.exceptions.NotFound:
+            # The instance was not properly created at all.
+            pass
 
 
-def _test_body(zone: str, instance_name: str):
+def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
     """
     Execute the proper checks to see if the instance got the GPU drivers properly installed.
     """
+    start_time = time.time()
+    output = ('', '')
+    time.sleep(30)  # Let the instance start
+    tries = 0
+    print('Using sshkey: ', ssh_key, flush=True)
+    while time.time() - start_time <= INSTALLATION_TIMEOUT:
+        time.sleep(10)
+        try:
+            tries += 1
+            process = subprocess.run(
+                ["gcloud", "compute", "ssh", instance_name, "--zone", zone,
+                 "--ssh-key-file", ssh_key,
+                 "--command", "ls /opt/google/gpu-installer"],
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                text=True,
+                timeout=10
+            )
+        except subprocess.TimeoutExpired as err:
+            continue
+        else:
+            output = process.stdout, process.stderr
+            if 'success' in process.stdout:
+                # Installation appears to be completed successfully
+                break
+    else:
+        print(f"Tried to run SSH connection {tries} times.")
+        print(f"Standard output from {instance_name}:\n" + output[0])
+        print(f"Error output from {instance_name}:\n" + output[1])
+        pytest.fail(f"Timeout during driver installation for instance {instance_name}.")
+
+    # Check if nvidia-smi lists the GPU as expected
+    process = subprocess.run(
+        ["gcloud", "compute", "ssh", instance_name, "--zone", zone,
+         "--ssh-key-file", ssh_key,
+         "--command", "nvidia-smi -L"],
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+        timeout=60
+    )
+
+    print(process.stdout)
+    assert gpu.lower() in process.stdout.lower()
+    # Do this until we see success or timeout
+    # I need to prepare a sshkey first
+    #  gcloud compute ssh gpu-test-centos-7-v100-ba1c8f00ed --zone us-central1-a --command="ls /opt/google/gpu-installer" 2> /dev/null
+    # Once there is success file, we can try running `nvidia-smi -L` to check if we see the card we want
+    # nvidia-smi -L
+    # GPU 0: Tesla V100-SXM2-16GB (UUID: GPU-14e93b7e-86df-27ae-7d7a-3cd4e3a81004)

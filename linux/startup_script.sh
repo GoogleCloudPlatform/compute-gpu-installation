@@ -1,4 +1,9 @@
 #!/bin/bash
+if which nvidia-smi
+then
+  exit
+fi
+
 mkdir -p /opt/google
 cd /opt/google || exit
 
