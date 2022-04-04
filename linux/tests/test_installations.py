@@ -28,29 +28,29 @@ from google.cloud import compute_v1
 
 PROJECT = google.auth.default()[1]
 
-INSTALLATION_TIMEOUT = 600  # 10 minutes
+INSTALLATION_TIMEOUT = 900  # 15 minutes
 
 # Cloud project and family
 OPERATING_SYSTEMS = (
-    ("centos-cloud", "centos-7"),
+    # ("centos-cloud", "centos-7"),
     ("centos-cloud", "centos-stream-8"),
-    ("debian-cloud", "debian-10"),
-    ("debian-cloud", "debian-11"),
+    # ("debian-cloud", "debian-10"),
+    # ("debian-cloud", "debian-11"),
     ("rhel-cloud", "rhel-7"),
     ("rhel-cloud", "rhel-8"),
-    ("rocky-linux-cloud", "rocky-linux-8"),
-    ("ubuntu-os-cloud", "ubuntu-2004-lts"),
-    ("ubuntu-os-cloud", "ubuntu-1804-lts"),
-    ("ubuntu-os-cloud", "ubuntu-2110"),
+    # ("rocky-linux-cloud", "rocky-linux-8"),
+    # ("ubuntu-os-cloud", "ubuntu-2004-lts"),
+    # ("ubuntu-os-cloud", "ubuntu-1804-lts"),
+    # ("ubuntu-os-cloud", "ubuntu-2110"),
 )
 
 GPUS = {
-    "A100": "nvidia-tesla-a100",
-    "K80": "nvidia-tesla-k80",
+    # "A100": "nvidia-tesla-a100",
+    # "K80": "nvidia-tesla-k80",
     "P4": "nvidia-tesla-p4",
-    "T4": "nvidia-tesla-t4",
-    "P100": "nvidia-tesla-p100",
-    "V100": "nvidia-tesla-v100",
+    # "T4": "nvidia-tesla-t4",
+    # "P100": "nvidia-tesla-p100",
+    # "V100": "nvidia-tesla-v100",
 }
 
 ZONES = {
@@ -184,12 +184,12 @@ def test_install_driver(ssh_key: str, opsys: Tuple[str, str], gpu: str):
         _test_body(zone, instance_name, gpu, ssh_key)
     finally:
         pass
-        try:
-            operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
-            operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
-        except google.api_core.exceptions.NotFound:
-            # The instance was not properly created at all.
-            pass
+        # try:
+        #     operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
+        #     operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+        # except google.api_core.exceptions.NotFound:
+        #     # The instance was not properly created at all.
+        #     pass
 
 
 def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
