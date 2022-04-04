@@ -238,15 +238,7 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
     else:
         binary = "yum"
     run(f"{binary} clean all")
-<<<<<<< Updated upstream
-    run(f"{binary} update -y --allowerasing")
-=======
-<<<<<<< Updated upstream
-    run(f"{binary} update -y")
-=======
     run(f"{binary} update -y --skip-broken")
->>>>>>> Stashed changes
->>>>>>> Stashed changes
     kernel_install = run(f"{binary} install -y kernel")
     if "already installed" not in kernel_install.stdout.decode():
         run("reboot")  # Restart the system after installing the kernel modules
