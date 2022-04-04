@@ -228,16 +228,17 @@ def check_driver_installed() -> bool:
     return process.returncode == 0
 
 
-def install_dependencies_centos_rhel_rocky(system: System, version: str):
+def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool:
     """
     Installs required kernel-related packages and pciutils for CentOS and RHEL.
     """
+    reboot = False
     if version.startswith("8"):
         binary = "dnf"
     else:
         binary = "yum"
     run(f"{binary} clean all")
-    run(f"{binary} update -y")
+    run(f"{binary} update -y --allowerasing")
     kernel_install = run(f"{binary} install -y kernel")
     if "already installed" not in kernel_install.stdout.decode():
         run("reboot")  # Restart the system after installing the kernel modules
@@ -248,6 +249,7 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str):
     elif system == System.CentOS and version.startswith("8"):
         run("dnf config-manager --set-enabled powertools")
         run("dnf install -y epel-release epel-next-release")
+        reboot = True
     elif system == System.RHEL and version.startswith("8"):
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm")
     elif system in (System.RHEL, System.CentOS) and version.startswith("9"):
@@ -257,18 +259,19 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str):
     run(f"{binary} install -y kernel-devel epel-release "
         f"kernel-headers pciutils gcc make dkms acpid "
         f"libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig")
-    return
+
+    return reboot
 
 
-def install_dependencies_sles(system: System, version: str):
+def install_dependencies_sles(system: System, version: str) -> bool:
     # zypper install gcc make kernel-devel kernel-source
     # zypper install -t pattern devel_C_C++ devel_kernel
     # zypper install dkms
-    pass
+    return False
     # For now, there is not SLES script working.
 
 
-def install_dependencies_debian_ubuntu(system: System, version: str):
+def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
     """
     Installs kernel-related packages and pciutils for Debian and Ubuntu.
     """
@@ -276,7 +279,7 @@ def install_dependencies_debian_ubuntu(system: System, version: str):
     run("apt update")
     run(f"apt install -y linux-headers-{kernel_version} "
         "software-properties-common pciutils gcc make")
-    return
+    return False
 
 
 def install_dependencies(system: System, version: str):
@@ -288,17 +291,26 @@ def install_dependencies(system: System, version: str):
     if DEPENDENCIES_INSTALLED_FLAG.is_file():
         return
 
+    reboot = False
+
     if system in (System.CentOS, System.RHEL, System.Rocky):
-        install_dependencies_centos_rhel_rocky(system, version)
+        reboot = install_dependencies_centos_rhel_rocky(system, version)
     elif system in (System.Debian, System.Ubuntu):
-        install_dependencies_debian_ubuntu(system, version)
+        reboot = install_dependencies_debian_ubuntu(system, version)
     elif system == System.SUSE:
-        install_dependencies_sles(system, version)
+        reboot = install_dependencies_sles(system, version)
     else:
         raise RuntimeError("Unsupported operating system!")
 
     with DEPENDENCIES_INSTALLED_FLAG.open(mode='w') as flag:
         flag.write('1')
+    
+    if reboot:
+        print_out("The system needs to be rebooted to complete the installation process. "
+                  "The process will be continued after the reboot.")
+        print_out("Rebooting now.")
+        run("reboot")
+        sys.exit(0)
 
 
 def install_driver_runfile():
