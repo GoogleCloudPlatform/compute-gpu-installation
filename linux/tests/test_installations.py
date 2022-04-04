@@ -18,6 +18,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from threading import BoundedSemaphore
 from typing import Tuple
 
 import pytest
@@ -32,25 +33,34 @@ INSTALLATION_TIMEOUT = 900  # 15 minutes
 
 # Cloud project and family
 OPERATING_SYSTEMS = (
-    # ("centos-cloud", "centos-7"),
+    ("centos-cloud", "centos-7"),
     ("centos-cloud", "centos-stream-8"),
-    # ("debian-cloud", "debian-10"),
-    # ("debian-cloud", "debian-11"),
+    ("debian-cloud", "debian-10"),
+    ("debian-cloud", "debian-11"),
     ("rhel-cloud", "rhel-7"),
     ("rhel-cloud", "rhel-8"),
-    # ("rocky-linux-cloud", "rocky-linux-8"),
-    # ("ubuntu-os-cloud", "ubuntu-2004-lts"),
-    # ("ubuntu-os-cloud", "ubuntu-1804-lts"),
-    # ("ubuntu-os-cloud", "ubuntu-2110"),
+    ("rocky-linux-cloud", "rocky-linux-8"),
+    ("ubuntu-os-cloud", "ubuntu-2004-lts"),
+    ("ubuntu-os-cloud", "ubuntu-1804-lts"),
+    ("ubuntu-os-cloud", "ubuntu-2110"),
 )
 
 GPUS = {
-    # "A100": "nvidia-tesla-a100",
-    # "K80": "nvidia-tesla-k80",
+    "A100": "nvidia-tesla-a100",
+    "K80": "nvidia-tesla-k80",
     "P4": "nvidia-tesla-p4",
-    # "T4": "nvidia-tesla-t4",
-    # "P100": "nvidia-tesla-p100",
-    # "V100": "nvidia-tesla-v100",
+    "T4": "nvidia-tesla-t4",
+    "P100": "nvidia-tesla-p100",
+    "V100": "nvidia-tesla-v100",
+}
+
+GPU_QUOTA_SEMAPHORES = {
+    "A100": BoundedSemaphore(16),
+    "K80": BoundedSemaphore(16),
+    "P4": BoundedSemaphore(16),
+    "T4": BoundedSemaphore(16),
+    "P100": BoundedSemaphore(1),
+    "V100": BoundedSemaphore(8),
 }
 
 ZONES = {
@@ -72,8 +82,11 @@ MACHINE_TYPES = {
 }
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def ssh_key():
+    """
+    Generate an SSH key to be used while testing.
+    """
     tmp_file = tempfile.NamedTemporaryFile()
     process = subprocess.run(
         ["ssh-keygen", "-b", "4096", "-f", tmp_file.name, "-N", ""],
@@ -83,6 +96,7 @@ def ssh_key():
         text=True,
         timeout=10
     )
+    print(f"Created ssh key: {tmp_file.name}")
     yield tmp_file.name
     os.unlink(tmp_file.name + '.pub')
 
@@ -103,6 +117,9 @@ def get_image_from_family(project: str, family: str) -> compute_v1.Image:
 
 
 def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk:
+    """
+    Prepare an AttachedDisk object to be used for instance creation.
+    """
     boot_disk = compute_v1.AttachedDisk()
     initialize_params = compute_v1.AttachedDiskInitializeParams()
     initialize_params.source_image = source_image_link
@@ -117,9 +134,10 @@ def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk
 
 
 @pytest.mark.parametrize("opsys,gpu", itertools.product(OPERATING_SYSTEMS, GPUS))
-def test_install_driver(ssh_key: str, opsys: Tuple[str, str], gpu: str):
-    # opsys = OPERATING_SYSTEMS[0]
-    # gpu = 'A100'
+def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: str):
+    """
+    Run the installation test for given operating system and GPU card.
+    """
     zone = ZONES[gpu]
 
     op_sys_image = get_image_from_family(*opsys)
@@ -168,28 +186,35 @@ def test_install_driver(ssh_key: str, opsys: Tuple[str, str], gpu: str):
     instance_client = compute_v1.InstancesClient()
     operation_client = compute_v1.ZoneOperationsClient()
 
-    try:
-        operation = instance_client.insert_unary(request)
-        operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+    with GPU_QUOTA_SEMAPHORES[gpu]:
+        # Making sure not to exceed the GPU quota while executing the tests
+        # in multiple threads.
+        try:
+            operation = instance_client.insert_unary(request)
+            operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
 
-        if operation.error:
-            print(f"Error during instance {instance_name} creation:", operation.error, file=sys.stderr)
-            raise RuntimeError(operation.error)
+            if operation.error:
+                print(f"Error during instance {instance_name} creation:", operation.error, file=sys.stderr)
+                raise RuntimeError(operation.error)
 
-        if operation.warnings:
-            print(f"Warnings during instance {instance_name} creation:\n", file=sys.stderr)
-            for warning in operation.warnings:
-                print(f" - {warning.code}: {warning.message}", file=sys.stderr)
+            if operation.warnings:
+                msgs = []
+                for warning in operation.warnings:
+                    if warning.code != 'DISK_SIZE_LARGER_THAN_IMAGE_SIZE':
+                        msgs.append(f" - {warning.code}: {warning.message}")
+                if msgs:
+                    print(f"Warnings during instance {instance_name} creation:\n", file=sys.stderr)
+                    for msg in msgs:
+                        print(msg, file=sys.stderr)
 
-        _test_body(zone, instance_name, gpu, ssh_key)
-    finally:
-        pass
-        # try:
-        #     operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
-        #     operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
-        # except google.api_core.exceptions.NotFound:
-        #     # The instance was not properly created at all.
-        #     pass
+            _test_body(zone, instance_name, gpu, ssh_key)
+        finally:
+            try:
+                operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
+                operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+            except google.api_core.exceptions.NotFound:
+                # The instance was not properly created at all.
+                pass
 
 
 def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
@@ -200,7 +225,6 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
     output = ('', '')
     time.sleep(30)  # Let the instance start
     tries = 0
-    print('Using sshkey: ', ssh_key, flush=True)
     while time.time() - start_time <= INSTALLATION_TIMEOUT:
         time.sleep(10)
         try:
@@ -237,8 +261,6 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
         text=True,
         timeout=60
     )
-
-    print(process.stdout)
     assert gpu.lower() in process.stdout.lower()
     # Do this until we see success or timeout
     # I need to prepare a sshkey first

@@ -10,7 +10,9 @@ manually on local developer machine. Required steps:
 3. Install required Python packages `pip install -Ur requirements.txt`
 4. Run test using `pytest` command. You can speed up the 
    process by using parallel execution with 
-   `pytest -n auto`
+   `pytest --workers 1 --tests-per-worker 50`. Remember to use only one
+  process, as the tests use thread semaphores to make sure they don't exceed
+  GPU quota
 
 
 Note: The VMs created for this test don't have external IP
