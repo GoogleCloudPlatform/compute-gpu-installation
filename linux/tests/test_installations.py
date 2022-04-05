@@ -29,7 +29,7 @@ from google.cloud import compute_v1
 
 PROJECT = google.auth.default()[1]
 
-INSTALLATION_TIMEOUT = 900  # 15 minutes
+INSTALLATION_TIMEOUT = 1200  # 20 minutes
 
 # Cloud project and family
 OPERATING_SYSTEMS = (
@@ -262,9 +262,3 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
         timeout=60
     )
     assert gpu.lower() in process.stdout.lower()
-    # Do this until we see success or timeout
-    # I need to prepare a sshkey first
-    #  gcloud compute ssh gpu-test-centos-7-v100-ba1c8f00ed --zone us-central1-a --command="ls /opt/google/gpu-installer" 2> /dev/null
-    # Once there is success file, we can try running `nvidia-smi -L` to check if we see the card we want
-    # nvidia-smi -L
-    # GPU 0: Tesla V100-SXM2-16GB (UUID: GPU-14e93b7e-86df-27ae-7d7a-3cd4e3a81004)
