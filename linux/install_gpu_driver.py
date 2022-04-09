@@ -249,12 +249,15 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
     elif system == System.CentOS and version.startswith("8"):
         run("dnf config-manager --set-enabled powertools")
         run("dnf install -y epel-release epel-next-release")
-        reboot = True
     elif system == System.RHEL and version.startswith("8"):
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm")
     elif system in (System.RHEL, System.CentOS) and version.startswith("9"):
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-next-release-9-1.el9.next.noarch.rpm")
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-release-9-1.el9.next.noarch.rpm")
+
+    if system == System.CentOS:
+        # Both supported CentOS versions require reboot after this step
+        reboot = True
 
     run(f"{binary} install -y kernel-devel epel-release "
         f"kernel-headers pciutils gcc make dkms acpid "
