@@ -13,45 +13,45 @@
 # limitations under the License.
 import itertools
 import os
-import sys
 import subprocess
+import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from threading import BoundedSemaphore
 from typing import Tuple
 
-import pytest
-import uuid
 import google.api_core.exceptions
 import google.auth
+import pytest
 from google.cloud import compute_v1
 
 PROJECT = google.auth.default()[1]
 
-INSTALLATION_TIMEOUT = 1200  # 20 minutes
+INSTALLATION_TIMEOUT = 30*60  # 30 minutes
 
 # Cloud project and family
 OPERATING_SYSTEMS = (
     ("centos-cloud", "centos-7"),
-    ("centos-cloud", "centos-stream-8"),
-    ("debian-cloud", "debian-10"),
-    ("debian-cloud", "debian-11"),
-    ("rhel-cloud", "rhel-7"),
-    ("rhel-cloud", "rhel-8"),
-    ("rocky-linux-cloud", "rocky-linux-8"),
-    ("ubuntu-os-cloud", "ubuntu-2004-lts"),
-    ("ubuntu-os-cloud", "ubuntu-1804-lts"),
-    ("ubuntu-os-cloud", "ubuntu-2110"),
+    # ("centos-cloud", "centos-stream-8"),
+    # ("debian-cloud", "debian-10"),
+    # ("debian-cloud", "debian-11"),
+    # ("rhel-cloud", "rhel-7"),
+    # ("rhel-cloud", "rhel-8"),
+    # ("rocky-linux-cloud", "rocky-linux-8"),
+    # ("ubuntu-os-cloud", "ubuntu-2004-lts"),
+    # ("ubuntu-os-cloud", "ubuntu-1804-lts"),
+    # ("ubuntu-os-cloud", "ubuntu-2110"),
 )
 
 GPUS = {
-    "A100": "nvidia-tesla-a100",
-    "K80": "nvidia-tesla-k80",
+    # "A100": "nvidia-tesla-a100",
+    # "K80": "nvidia-tesla-k80",
     "P4": "nvidia-tesla-p4",
-    "T4": "nvidia-tesla-t4",
-    "P100": "nvidia-tesla-p100",
-    "V100": "nvidia-tesla-v100",
+    # "T4": "nvidia-tesla-t4",
+    # "P100": "nvidia-tesla-p100",
+    # "V100": "nvidia-tesla-v100",
 }
 
 GPU_QUOTA_SEMAPHORES = {
@@ -133,6 +133,17 @@ def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk
     return boot_disk
 
 
+def read_ssh_pubkey(ssh_key: str) -> str:
+    """
+    Read the public key of the generated ssh-key and returns it in a format acceptable for
+    instance Metadata.
+    """
+    with open(ssh_key + '.pub') as key_file:
+        pub_key = key_file.read()
+    user = pub_key.rsplit(' ', 1)[1].split('@')[0]
+    return f"{user}:{pub_key}"
+
+
 @pytest.mark.parametrize("opsys,gpu", itertools.product(OPERATING_SYSTEMS, GPUS))
 def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: str):
     """
@@ -175,7 +186,13 @@ def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: st
     meta_item.key = 'startup-script'
     with open(Path(__file__).parent / '../startup_script.sh') as script:
         meta_item.value = script.read()
-    instance.metadata.items = [meta_item]
+    ssh_item = compute_v1.Items()
+    ssh_item.key = 'ssh-keys'
+    ssh_item.value = read_ssh_pubkey(ssh_key)
+    block_item = compute_v1.Items()
+    block_item.key = "block-project-ssh-keys"
+    block_item.value = "true"
+    instance.metadata.items = [meta_item, ssh_item, block_item]
 
     # Prepare the request to insert an instance.
     request = compute_v1.InsertInstanceRequest()
@@ -210,8 +227,9 @@ def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: st
             _test_body(zone, instance_name, gpu, ssh_key)
         finally:
             try:
-                operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
-                operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+                pass
+                # operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
+                # operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
             except google.api_core.exceptions.NotFound:
                 # The instance was not properly created at all.
                 pass
