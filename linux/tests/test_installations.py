@@ -34,24 +34,24 @@ INSTALLATION_TIMEOUT = 30*60  # 30 minutes
 # Cloud project and family
 OPERATING_SYSTEMS = (
     ("centos-cloud", "centos-7"),
-    # ("centos-cloud", "centos-stream-8"),
-    # ("debian-cloud", "debian-10"),
-    # ("debian-cloud", "debian-11"),
-    # ("rhel-cloud", "rhel-7"),
-    # ("rhel-cloud", "rhel-8"),
-    # ("rocky-linux-cloud", "rocky-linux-8"),
-    # ("ubuntu-os-cloud", "ubuntu-2004-lts"),
-    # ("ubuntu-os-cloud", "ubuntu-1804-lts"),
-    # ("ubuntu-os-cloud", "ubuntu-2110"),
+    ("centos-cloud", "centos-stream-8"),
+    ("debian-cloud", "debian-10"),
+    ("debian-cloud", "debian-11"),
+    ("rhel-cloud", "rhel-7"),
+    ("rhel-cloud", "rhel-8"),
+    ("rocky-linux-cloud", "rocky-linux-8"),
+    ("ubuntu-os-cloud", "ubuntu-2004-lts"),
+    ("ubuntu-os-cloud", "ubuntu-1804-lts"),
+    ("ubuntu-os-cloud", "ubuntu-2110"),
 )
 
 GPUS = {
-    # "A100": "nvidia-tesla-a100",
-    # "K80": "nvidia-tesla-k80",
+    "A100": "nvidia-tesla-a100",
+    "K80": "nvidia-tesla-k80",
     "P4": "nvidia-tesla-p4",
-    # "T4": "nvidia-tesla-t4",
-    # "P100": "nvidia-tesla-p100",
-    # "V100": "nvidia-tesla-v100",
+    "T4": "nvidia-tesla-t4",
+    "P100": "nvidia-tesla-p100",
+    "V100": "nvidia-tesla-v100",
 }
 
 GPU_QUOTA_SEMAPHORES = {
@@ -227,9 +227,8 @@ def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: st
             _test_body(zone, instance_name, gpu, ssh_key)
         finally:
             try:
-                pass
-                # operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
-                # operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+                operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
+                operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
             except google.api_core.exceptions.NotFound:
                 # The instance was not properly created at all.
                 pass
