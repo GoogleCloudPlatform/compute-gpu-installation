@@ -88,6 +88,7 @@ class Logger:
     def print_out(cls, msg: str, end=os.linesep, print_=True):
         if cls.STDOUT_LOG_F:
             cls.STDOUT_LOG_F.write(msg + end)
+            cls.STDOUT_LOG_F.flush()
         if print_:
             print(msg, end=end, file=sys.stdout)
 
@@ -95,6 +96,7 @@ class Logger:
     def print_err(cls, msg: str, end=os.linesep, print_=True):
         if cls.STDERR_LOG_F:
             cls.STDERR_LOG_F.write(msg + end)
+            cls.STDERR_LOG_F.flush()
         if print_:
             print(msg, end=end, file=sys.stderr)
 
