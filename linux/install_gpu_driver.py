@@ -283,7 +283,7 @@ def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
     kernel_version = run("uname -r").stdout.decode().strip()
     run("apt update")
     run(f"apt install -y linux-headers-{kernel_version} "
-        "software-properties-common pciutils gcc make")
+        "software-properties-common pciutils gcc make dkms")
     return False
 
 
@@ -321,10 +321,10 @@ def install_dependencies(system: System, version: str):
 def install_driver_runfile():
     if detect_gpu_device() == TESLA_K80_DEVICE_CODE:
         run(f"curl -fSsl -O {K80_DRIVER_URL}")
-        run("sh NVIDIA-Linux-x86_64-470.103.01.run -s")
+        run("sh NVIDIA-Linux-x86_64-470.103.01.run -s --dkms")
     else:
         run(f"curl -fSsl -O {DRIVER_URL}")
-        run("sh NVIDIA-Linux-x86_64-495.46.run -s")
+        run("sh NVIDIA-Linux-x86_64-495.46.run -s --dkms")
 
 
 def post_install_steps():
