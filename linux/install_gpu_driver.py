@@ -248,16 +248,16 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
         sys.exit(0)
     if system == System.Rocky:
         run("dnf config-manager --set-enabled powertools")
-        run("dnf install -y epel-release")
         run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
-        run("dnf update")
+        run("dnf update -y --skip-broken")
+        run("dnf install -y epel-release")
         run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
     elif system == System.CentOS and version.startswith("8"):
         run("dnf config-manager --set-enabled powertools")
         run("dnf install -y epel-release epel-next-release")
     elif system == System.RHEL and version.startswith("8"):
         run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
-        run("dnf update")
+        run("dnf update -y --skip-broken")
         run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm")
     elif system in (System.RHEL, System.CentOS) and version.startswith("9"):
