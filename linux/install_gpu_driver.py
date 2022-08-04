@@ -242,16 +242,23 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
     run(f"{binary} clean all")
     run(f"{binary} update -y --skip-broken")
     kernel_install = run(f"{binary} install -y kernel")
+    kernel_version = run("uname -r").stdout.decode().strip()
     if "already installed" not in kernel_install.stdout.decode():
         run("reboot")  # Restart the system after installing the kernel modules
         sys.exit(0)
     if system == System.Rocky:
         run("dnf config-manager --set-enabled powertools")
         run("dnf install -y epel-release")
+        run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
+        run("dnf update")
+        run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
     elif system == System.CentOS and version.startswith("8"):
         run("dnf config-manager --set-enabled powertools")
         run("dnf install -y epel-release epel-next-release")
     elif system == System.RHEL and version.startswith("8"):
+        run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
+        run("dnf update")
+        run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm")
     elif system in (System.RHEL, System.CentOS) and version.startswith("9"):
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-next-release-9-1.el9.next.noarch.rpm")
