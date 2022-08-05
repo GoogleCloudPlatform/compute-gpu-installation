@@ -49,7 +49,7 @@ SUPPORTED_SYSTEMS = {
     System.RHEL: {"7", "8"},
     System.Rocky: {"8"},
     System.SUSE: set(),
-    System.Ubuntu: {"18", "20", "21"}
+    System.Ubuntu: {"18", "20", "21", "22"}
 }
 
 INSTALLER_DIR = pathlib.Path('/opt/google/gpu-installer/')
