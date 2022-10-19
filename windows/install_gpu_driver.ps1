@@ -16,10 +16,26 @@
  # limitations under the License.
 #>
 
+# Determine which management interface to use
+#
+# Get-WmiObject is deprecated and removed in Powershell 6.0+
+# https://learn.microsoft.com/en-us/powershell/scripting/whats-new/differences-from-windows-powershell?view=powershell-7#cmdlets-removed-from-powershell
+#
+# We maintain backwards compabitility with older versions of Powershell by using Get-WmiObject if available
+function Get-Mgmt-Command {
+    $Command = 'Get-CimInstance'
+    if (Get-Command Get-WmiObject 2>&1>$null) {
+        $Command = 'Get-WmiObject'
+    }
+    return $Command
+}
+
 # Check if the GPU exists with Windows Management Instrumentation
 function Find-GPU {
+    $MgmtCommand = Get-Mgmt-Command
     try {
-        (Get-WmiObject -query "select DeviceID from Win32_PNPEntity Where (deviceid Like '%PCI\\VEN_10DE%') and (PNPClass = 'Display' or Name = '3D Video Controller')"  | Select-Object DeviceID -ExpandProperty DeviceID).substring(13,8)
+        $Command = "(${MgmtCommand} -query ""select DeviceID from Win32_PNPEntity Where (deviceid Like '%PCI\\VEN_10DE%') and (PNPClass = 'Display' or Name = '3D Video Controller')"" | Select-Object DeviceID -ExpandProperty DeviceID).substring(13,8)"
+        Invoke-Expression -Command $Command
     }
     catch {
         Write-Output "There doesn't seem to be a GPU unit connected to your system. Do you want to continue?"
