@@ -328,10 +328,10 @@ def install_dependencies(system: System, version: str):
 def install_driver_runfile():
     if detect_gpu_device() == TESLA_K80_DEVICE_CODE:
         run(f"curl -fSsl -O {K80_DRIVER_URL}")
-        run("sh NVIDIA-Linux-x86_64-470.103.01.run -s --dkms")
+        run("sh NVIDIA-Linux-x86_64-470.103.01.run -s --dkms --no-cc-version-check")
     else:
         run(f"curl -fSsl -O {DRIVER_URL}")
-        run("sh NVIDIA-Linux-x86_64-495.46.run -s --dkms")
+        run("sh NVIDIA-Linux-x86_64-495.46.run -s --dkms --no-cc-version-check")
 
 
 def post_install_steps():
