@@ -240,12 +240,13 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
     else:
         binary = "yum"
     run(f"{binary} clean all")
-    run(f"{binary} update -y --skip-broken")
+    kernel_update = run(f"{binary} update -y --skip-broken")
+    if "kernel" in kernel_update.stdout.decode():
+        reboot = True  # Kernel update requires a reboot
     kernel_install = run(f"{binary} install -y kernel")
     kernel_version = run("uname -r").stdout.decode().strip()
     if "already installed" not in kernel_install.stdout.decode():
-        run("reboot")  # Restart the system after installing the kernel modules
-        sys.exit(0)
+        reboot = True  # Kernel update requires a reboot
     if system == System.Rocky:
         run("dnf config-manager --set-enabled powertools")
         run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
