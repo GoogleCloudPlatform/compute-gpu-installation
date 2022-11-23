@@ -240,13 +240,13 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
     else:
         binary = "yum"
     run(f"{binary} clean all")
-    kernel_update = run(f"{binary} update -y --skip-broken")
-    if "kernel" in kernel_update.stdout.decode():
-        reboot = True  # Kernel update requires a reboot
+    general_update = run(f"{binary} update -y --skip-broken")
+    if "kernel" in general_update.stdout.decode():
+        return True  # Kernel update requires a reboot before continuing
     kernel_install = run(f"{binary} install -y kernel")
     kernel_version = run("uname -r").stdout.decode().strip()
     if "already installed" not in kernel_install.stdout.decode():
-        reboot = True  # Kernel update requires a reboot
+        return True  # Kernel update requires a reboot
     if system == System.Rocky:
         run("dnf config-manager --set-enabled powertools")
         run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
@@ -314,9 +314,6 @@ def install_dependencies(system: System, version: str):
         reboot = install_dependencies_sles(system, version)
     else:
         raise RuntimeError("Unsupported operating system!")
-
-    with DEPENDENCIES_INSTALLED_FLAG.open(mode='w') as flag:
-        flag.write('1')
     
     if reboot:
         print_out("The system needs to be rebooted to complete the installation process. "
@@ -324,6 +321,9 @@ def install_dependencies(system: System, version: str):
         print_out("Rebooting now.")
         run("reboot")
         sys.exit(0)
+    else:
+        with DEPENDENCIES_INSTALLED_FLAG.open(mode='w') as flag:
+            flag.write('1')
 
 
 def install_driver_runfile():
