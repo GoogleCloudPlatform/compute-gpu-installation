@@ -326,13 +326,39 @@ def install_dependencies(system: System, version: str):
             flag.write('1')
 
 
-def install_driver_runfile():
+def install_driver_runfile(system: System, version: str):
+    dkms = "--dkms"
+    if system in (System.RHEL, System.Rocky) and version.startswith("8"):
+        # There is a problem with DKMS installation on Rocky and RHEL 8
+        # DKMS is disabled for those systems, you'll need to reinstall the drivers
+        # with every kernel update.
+        dkms = ""
+
     if detect_gpu_device() == TESLA_K80_DEVICE_CODE:
         run(f"curl -fSsl -O {K80_DRIVER_URL}")
-        run("sh NVIDIA-Linux-x86_64-470.103.01.run -s --dkms --no-cc-version-check")
+        binary = "NVIDIA-Linux-x86_64-470.103.01.run"
     else:
         run(f"curl -fSsl -O {DRIVER_URL}")
-        run("sh NVIDIA-Linux-x86_64-495.46.run -s --dkms --no-cc-version-check")
+        binary = "NVIDIA-Linux-x86_64-495.46.run"
+
+
+    attempt = 0
+    no_drm = ""
+
+    while attempt < 3:
+        install_run = run("sh {} -s {} {} --no-cc-version-check".format(binary, dkms, no_drm), check=False)
+
+        if install_run.returncode == 0:
+            return
+
+        if "Failed to install the kernel module through DKMS" in install_run.stderr.decode():
+            dkms = ""
+
+        if "--no-drm" in install_run.stderr.decode():
+            # Installer failed to install DRM KMS, so we try again with DRM disabled.
+            no_drm = "--no-drm"
+
+        attempt += 1
 
 
 def post_install_steps():
@@ -375,7 +401,7 @@ def install(args: argparse.Namespace):
         print("There doesn't seem to be a GPU unit connected to your system. "
               "Aborting drivers installation.")
         sys.exit(0)
-    install_driver_runfile()
+    install_driver_runfile(system, version)
     post_install_steps()
 
 
