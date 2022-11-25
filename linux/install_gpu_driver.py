@@ -234,7 +234,6 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
     """
     Installs required kernel-related packages and pciutils for CentOS and RHEL.
     """
-    reboot = False
     if version.startswith("8"):
         binary = "dnf"
     else:
@@ -265,15 +264,11 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-next-release-9-1.el9.next.noarch.rpm")
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-release-9-1.el9.next.noarch.rpm")
 
-    if system == System.CentOS:
-        # Both supported CentOS versions require reboot after this step
-        reboot = True
-
     run(f"{binary} install -y kernel-devel epel-release "
         f"kernel-headers pciutils gcc make dkms acpid "
         f"libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig")
 
-    return reboot
+    return False
 
 
 def install_dependencies_sles(system: System, version: str) -> bool:
@@ -295,6 +290,18 @@ def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
     return False
 
 
+def reboot():
+    """
+    Reboots the system.
+    """
+    print_out("The system needs to be rebooted to complete the installation process. "
+              "The process will be continued after the reboot.")
+    print_out("Rebooting now.")
+    run("reboot")
+    sys.exit(0)
+
+
+
 def install_dependencies(system: System, version: str):
     """
     Installs the driver dependencies to the system.
@@ -304,26 +311,26 @@ def install_dependencies(system: System, version: str):
     if DEPENDENCIES_INSTALLED_FLAG.is_file():
         return
 
-    reboot = False
+    reboot_flag = False
 
     if system in (System.CentOS, System.RHEL, System.Rocky):
-        reboot = install_dependencies_centos_rhel_rocky(system, version)
+        reboot_flag = install_dependencies_centos_rhel_rocky(system, version)
     elif system in (System.Debian, System.Ubuntu):
-        reboot = install_dependencies_debian_ubuntu(system, version)
+        reboot_flag = install_dependencies_debian_ubuntu(system, version)
     elif system == System.SUSE:
-        reboot = install_dependencies_sles(system, version)
+        reboot_flag = install_dependencies_sles(system, version)
     else:
         raise RuntimeError("Unsupported operating system!")
     
-    if reboot:
-        print_out("The system needs to be rebooted to complete the installation process. "
-                  "The process will be continued after the reboot.")
-        print_out("Rebooting now.")
-        run("reboot")
-        sys.exit(0)
+    if reboot_flag:
+        reboot()
     else:
         with DEPENDENCIES_INSTALLED_FLAG.open(mode='w') as flag:
             flag.write('1')
+
+    if system == System.CentOS:
+        # Both supported CentOS versions require reboot after this step
+        reboot()
 
 
 def install_driver_runfile(system: System, version: str):
