@@ -57,8 +57,8 @@ GPUS = {
 GPU_QUOTA_SEMAPHORES = {
     "A100": BoundedSemaphore(16),
     "K80": BoundedSemaphore(16),
-    "P4": BoundedSemaphore(16),
-    "T4": BoundedSemaphore(16),
+    "P4": BoundedSemaphore(1),
+    "T4": BoundedSemaphore(4),
     "P100": BoundedSemaphore(1),
     "V100": BoundedSemaphore(8),
 }
@@ -82,7 +82,7 @@ MACHINE_TYPES = {
 }
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def ssh_key():
     """
     Generate an SSH key to be used while testing.
@@ -94,7 +94,7 @@ def ssh_key():
         stderr=subprocess.DEVNULL,
         input="y",
         text=True,
-        timeout=10
+        timeout=60
     )
     print(f"Created ssh key: {tmp_file.name}")
     yield tmp_file.name
@@ -227,6 +227,7 @@ def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: st
             _test_body(zone, instance_name, gpu, ssh_key)
         finally:
             try:
+                # print("This is where I'd delete the instance, but we keep it for debugging.")
                 operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
                 operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
             except google.api_core.exceptions.NotFound:
