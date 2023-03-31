@@ -23,8 +23,8 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
 
-DRIVER_URL = "https://us.download.nvidia.com/tesla/525.85.12/NVIDIA-Linux-x86_64-525.85.12.run"
-K80_DRIVER_URL = "https://us.download.nvidia.com/tesla/470.103.01/NVIDIA-Linux-x86_64-470.103.01.run"
+DRIVER_URL = "https://us.download.nvidia.com/tesla/418.226.00/NVIDIA-Linux-x86_64-418.226.00.run"	NVIDIA-Linux-x86_64-418.226.00-grid.run
+K80_DRIVER_URL = "https://us.download.nvidia.com/tesla/418.226.00/NVIDIA-Linux-x86_64-418.226.00.run"
 
 TESLA_K80_DEVICE_CODE = "10de:102d"
 
@@ -343,11 +343,14 @@ def install_driver_runfile(system: System, version: str):
 
     if detect_gpu_device() == TESLA_K80_DEVICE_CODE:
         run(f"curl -fSsl -O {K80_DRIVER_URL}")
-        binary = "NVIDIA-Linux-x86_64-470.103.01.run"
+        binary = "NVIDIA-Linux-x86_64-418.226.00.run"
+        # binary = "NVIDIA-Linux-x86_64-418.226.00-grid.run"
+        # binary = "NVIDIA-Linux-x86_64-470.103.01.run" 
     else:
         run(f"curl -fSsl -O {DRIVER_URL}")
-        binary = "NVIDIA-Linux-x86_64-525.85.12.run"
-
+        # binary = "NVIDIA-Linux-x86_64-525.85.12.run"
+        # binary = "NVIDIA-Linux-x86_64-418.226.00-grid.run"
+        binary = "NVIDIA-Linux-x86_64-418.226.00.run"
 
     attempt = 0
     no_drm = ""
