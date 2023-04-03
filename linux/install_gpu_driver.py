@@ -227,7 +227,10 @@ def check_driver_installed() -> bool:
     If it's available, that means the driver is already installed.
     """
     process = run("which nvidia-smi", check=False)
-    return process.returncode == 0
+    if process.returncode != 0:
+        return False
+    process2 = run("nvidia-smi", check=False)
+    return process2.returncode == 0
 
 
 def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool:
