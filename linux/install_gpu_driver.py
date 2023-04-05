@@ -23,11 +23,7 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
 
-DRIVER_URL = "https://us.download.nvidia.com/tesla/525.85.12/NVIDIA-Linux-x86_64-525.85.12.run"
-K80_DRIVER_URL = "https://us.download.nvidia.com/tesla/470.103.01/NVIDIA-Linux-x86_64-470.103.01.run"
-
-TESLA_K80_DEVICE_CODE = "10de:102d"
-
+DRIVER_URL = "https://us.download.nvidia.com/tesla/510.47.03/NVIDIA-Linux-x86_64-510.47.03.run"
 
 class System(Enum):
     CentOS = auto()
@@ -344,12 +340,8 @@ def install_driver_runfile(system: System, version: str):
         # with every kernel update.
         dkms = ""
 
-    if detect_gpu_device() == TESLA_K80_DEVICE_CODE:
-        run(f"curl -fSsl -O {K80_DRIVER_URL}")
-        binary = "NVIDIA-Linux-x86_64-470.103.01.run"
-    else:
-        run(f"curl -fSsl -O {DRIVER_URL}")
-        binary = "NVIDIA-Linux-x86_64-525.85.12.run"
+    run(f"curl -fSsl -O {DRIVER_URL}")
+    binary = "NVIDIA-Linux-x86_64-510.47.03.run"
 
 
     attempt = 0
