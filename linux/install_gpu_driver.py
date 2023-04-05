@@ -23,7 +23,8 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
 
-DRIVER_URL = "https://us.download.nvidia.com/tesla/510.47.03/NVIDIA-Linux-x86_64-510.47.03.run"
+DRIVER_VERSION = "510.47.03"
+DRIVER_URL = f"https://us.download.nvidia.com/tesla/{DRIVER_VERSION}/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
 
 class System(Enum):
     CentOS = auto()
@@ -341,7 +342,7 @@ def install_driver_runfile(system: System, version: str):
         dkms = ""
 
     run(f"curl -fSsl -O {DRIVER_URL}")
-    binary = "NVIDIA-Linux-x86_64-510.47.03.run"
+    binary = f"NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
 
 
     attempt = 0
