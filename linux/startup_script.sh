@@ -18,4 +18,4 @@ then
 fi
 
 curl https://raw.githubusercontent.com/codeocean/compute-gpu-installation/main/linux/install_gpu_driver.py --output install_gpu_driver.py
-python3 install_gpu_driver.py
+python3 install_gpu_driver.py $1

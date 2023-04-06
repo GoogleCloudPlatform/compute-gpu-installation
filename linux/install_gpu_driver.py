@@ -23,7 +23,7 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
 
-DRIVER_VERSION = "510.47.03"
+DRIVER_VERSION = str(sys.argv[1])
 DRIVER_URL = f"https://us.download.nvidia.com/tesla/{DRIVER_VERSION}/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
 
 class System(Enum):
