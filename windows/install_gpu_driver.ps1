@@ -40,6 +40,7 @@ function Find-GPU {
     }
     catch {
         Write-Output "There doesn't seem to be a GPU unit connected to your system."
+        return ""
     }
 }
 
