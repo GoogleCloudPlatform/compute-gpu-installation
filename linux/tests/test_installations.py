@@ -46,6 +46,7 @@ OPERATING_SYSTEMS = (
 )
 
 GPUS = {
+    "L4": "nvidia-l4",
     "A100": "nvidia-tesla-a100",
     "K80": "nvidia-tesla-k80",
     "P4": "nvidia-tesla-p4",
@@ -55,6 +56,7 @@ GPUS = {
 }
 
 GPU_QUOTA_SEMAPHORES = {
+    "L4": BoundedSemaphore(8),
     "A100": BoundedSemaphore(16),
     "K80": BoundedSemaphore(16),
     "P4": BoundedSemaphore(1),
@@ -64,6 +66,7 @@ GPU_QUOTA_SEMAPHORES = {
 }
 
 ZONES = {
+    "L4": "us-central1-a"
     "A100": "us-central1-f",
     "K80": "us-central1-a",
     "P4": "us-central1-a",
@@ -73,6 +76,7 @@ ZONES = {
 }
 
 MACHINE_TYPES = {
+    "L4": "g2-standard-4",
     "A100": "a2-highgpu-1g",
     "K80": "n1-standard-8",
     "P4": "n1-standard-8",

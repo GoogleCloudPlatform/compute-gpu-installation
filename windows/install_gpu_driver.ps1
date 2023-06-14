@@ -30,12 +30,13 @@ function Get-Mgmt-Command {
     return $Command
 }
 
-# Check if the GPU exists with Windows Management Instrumentation
+# Check if the GPU exists with Windows Management Instrumentation, returning the device ID if it exists
 function Find-GPU {
     $MgmtCommand = Get-Mgmt-Command
     try {
         $Command = "(${MgmtCommand} -query ""select DeviceID from Win32_PNPEntity Where (deviceid Like '%PCI\\VEN_10DE%') and (PNPClass = 'Display' or Name = '3D Video Controller')"" | Select-Object DeviceID -ExpandProperty DeviceID).substring(13,8)"
-        Invoke-Expression -Command $Command
+        $dev_id = Invoke-Expression -Command $Command
+        return $dev_id
     }
     catch {
         Write-Output "There doesn't seem to be a GPU unit connected to your system."
@@ -57,12 +58,34 @@ function Check-Driver {
 # Install the driver
 function Install-Driver {
 
-    # Set the correct url for download and uses the appropriate file name to install the driver
-    $url = 'https://developer.download.nvidia.com/compute/cuda/11.4.0/network_installers/cuda_11.4.0_win10_network.exe';
-    $file_dir = 'C:\NVIDIA-Driver\cuda_11.4.0_win10_network.exe';
-
     # Check if the GPU exists and if the driver is already installed
-    Find-GPU
+    $gpu_dev_id = Find-GPU
+
+    # Set the correct URL, filename, and arguments to the installer
+    # K80 GPUs must use an older CUDA version
+    $url = 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda_12.1.1_531.14_windows.exe';
+    $file_dir = 'C:\NVIDIA-Driver\cuda_12.1.1_531.14_windows.exe';
+    $install_args = '/s /n';
+    if ("DEV_102D".Equals($gpu_dev_id)) {
+      # K80 GPUs must use an older driver/CUDA version
+      $url = 'https://developer.download.nvidia.com/compute/cuda/11.4.0/network_installers/cuda_11.4.0_win10_network.exe';
+      $file_dir = 'C:\NVIDIA-Driver\cuda_11.4.0_win10_network.exe';
+    }
+    if ("DEV_27B8".Equals($gpu_dev_id)) {
+      # The latest CUDA bundle (12.1.1) does not support L4 GPUs, so this script
+      # only installs the driver (version 528.89). There is a different installer
+      # for Windows server 2016/2019/2022 and Windows 10/11, so use systeminfo
+      # to determine which installer to use.
+      $install_args = '/s /noeula /noreboot';
+      $os_name = Invoke-Expression -Command 'systeminfo | findstr /B /C:"OS Name"'
+      if ($os_name.Contains("Server")) {
+        $url = 'https://us.download.nvidia.com/tesla/528.89/528.89-data-center-tesla-desktop-winserver-2016-2019-2022-dch-international.exe';
+        $file_dir = 'C:\NVIDIA-Driver\528.89-data-center-tesla-desktop-winserver-2016-2019-2022-dch-international.exe';
+      } else {
+        $url = 'https://us.download.nvidia.com/tesla/528.89/528.89-data-center-tesla-desktop-win10-win11-64bit-dch-international.exe';
+        $file_dir = 'C:\NVIDIA-Driver\528.89-data-center-tesla-desktop-win10-win11-64bit-dch-international.exe';
+      }
+    }
     Check-Driver
 
     # Create the folder for the driver download
@@ -74,7 +97,7 @@ function Install-Driver {
     Invoke-WebRequest $url -OutFile $file_dir
 
     # Install the file with the specified path from earlier as well as the RunAs admin option
-    Start-Process -FilePath $file_dir -ArgumentList '/s /n' -Wait
+    Start-Process -FilePath $file_dir -ArgumentList $install_args -Wait
 }
 
 # Run the functions
