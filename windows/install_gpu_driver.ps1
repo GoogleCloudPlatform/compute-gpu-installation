@@ -38,8 +38,7 @@ function Find-GPU {
         Invoke-Expression -Command $Command
     }
     catch {
-        Write-Output "There doesn't seem to be a GPU unit connected to your system. Do you want to continue?"
-        Read-Host -Prompt 'Press any key to continue'
+        Write-Output "There doesn't seem to be a GPU unit connected to your system."
     }
 }
 
@@ -47,12 +46,11 @@ function Find-GPU {
 function Check-Driver {
     try {
         &'C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe'
-        Write-Output 'Driver is already installed. Do you wish to continue?'
-        Read-Host -Prompt 'Press any key to continue'
+        Write-Output 'Driver is already installed.'
+        Exit
     }
     catch {
         Write-Output 'Driver is not installed, proceeding with installation'
-        Read-Host -Prompt 'Press any key to continue'
     }
 }
 
