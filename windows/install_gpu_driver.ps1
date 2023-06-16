@@ -63,10 +63,17 @@ function Install-Driver {
     $gpu_dev_id = Find-GPU
 
     # Set the correct URL, filename, and arguments to the installer
-    # K80 GPUs must use an older CUDA version
     $url = 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda_12.1.1_531.14_windows.exe';
     $file_dir = 'C:\NVIDIA-Driver\cuda_12.1.1_531.14_windows.exe';
     $install_args = '/s /n';
+    $os_name = Invoke-Expression -Command 'systeminfo | findstr /B /C:"OS Name"'
+    if ($os_name.Contains("Microsoft Windows Server 2016 Datacenter")) {
+        # Windows Server 2016 needs an older version of the installer to work properly
+        $url = "https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_522.06_windows.exe"
+        $file_dir = "C:\NVIDIA-Driver\cuda_11.8.0_522.06_windows.exe"
+        # Windows 2016 also requires manual setting of TLS version
+        [Net.ServicePointManager]::SecurityProtocol = 'Tls12'
+    }
     if ("DEV_102D".Equals($gpu_dev_id)) {
       # K80 GPUs must use an older driver/CUDA version
       $url = 'https://developer.download.nvidia.com/compute/cuda/11.4.0/network_installers/cuda_11.4.0_win10_network.exe';
@@ -78,7 +85,6 @@ function Install-Driver {
       # for Windows server 2016/2019/2022 and Windows 10/11, so use systeminfo
       # to determine which installer to use.
       $install_args = '/s /noeula /noreboot';
-      $os_name = Invoke-Expression -Command 'systeminfo | findstr /B /C:"OS Name"'
       if ($os_name.Contains("Server")) {
         $url = 'https://us.download.nvidia.com/tesla/528.89/528.89-data-center-tesla-desktop-winserver-2016-2019-2022-dch-international.exe';
         $file_dir = 'C:\NVIDIA-Driver\528.89-data-center-tesla-desktop-winserver-2016-2019-2022-dch-international.exe';
