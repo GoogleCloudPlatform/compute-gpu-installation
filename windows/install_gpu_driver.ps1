@@ -47,7 +47,7 @@ function Find-GPU {
 # Check if the Driver is already installed
 function Check-Driver {
     try {
-        &'C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe'
+        &'nvidia-smi.exe'
         Write-Output 'Driver is already installed.'
         Exit
     }
