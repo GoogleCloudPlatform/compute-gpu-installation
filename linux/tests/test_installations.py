@@ -66,7 +66,7 @@ GPU_QUOTA_SEMAPHORES = {
 }
 
 ZONES = {
-    "L4": "us-central1-a"
+    "L4": "us-central1-a",
     "A100": "us-central1-f",
     "K80": "us-central1-a",
     "P4": "us-central1-a",
