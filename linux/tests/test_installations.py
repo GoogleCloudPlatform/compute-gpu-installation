@@ -57,8 +57,8 @@ GPUS = {
 
 GPU_QUOTA_SEMAPHORES = {
     "L4": BoundedSemaphore(8),
-    "A100": BoundedSemaphore(16),
-    "K80": BoundedSemaphore(16),
+    "A100": BoundedSemaphore(8),
+    "K80": BoundedSemaphore(8),
     "P4": BoundedSemaphore(1),
     "T4": BoundedSemaphore(4),
     "P100": BoundedSemaphore(1),
