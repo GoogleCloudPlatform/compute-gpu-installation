@@ -23,8 +23,11 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
 
-DRIVER_URL = "https://us.download.nvidia.com/tesla/525.125.06/NVIDIA-Linux-x86_64-525.125.06.run"
-K80_DRIVER_URL = "https://us.download.nvidia.com/tesla/470.199.02/NVIDIA-Linux-x86_64-470.199.02.run"
+DRIVER_VERSION = "525.85.12"
+K80_DRIVER_VERSION = "470.103.01"
+
+DRIVER_URL = f"https://us.download.nvidia.com/tesla/{DRIVER_VERSION}/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
+K80_DRIVER_URL = f"https://us.download.nvidia.com/tesla/{K80_DRIVER_VERSION}/NVIDIA-Linux-x86_64-{K80_DRIVER_VERSION}.run"
 
 TESLA_K80_DEVICE_CODE = "10de:102d"
 
@@ -346,10 +349,10 @@ def install_driver_runfile(system: System, version: str):
 
     if detect_gpu_device() == TESLA_K80_DEVICE_CODE:
         run(f"curl -fSsl -O {K80_DRIVER_URL}")
-        binary = "NVIDIA-Linux-x86_64-470.103.01.run"
+        binary = f"NVIDIA-Linux-x86_64-{K80_DRIVER_VERSION}.run"
     else:
         run(f"curl -fSsl -O {DRIVER_URL}")
-        binary = "NVIDIA-Linux-x86_64-525.85.12.run"
+        binary = f"NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
 
 
     attempt = 0
