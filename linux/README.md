@@ -11,7 +11,7 @@ The script support the following operating systems:
 * Debian: versions 10 and 11
 * RHEL: versions 7 and 8
 * Rocky: version 8
-* Ubuntu: version 18, 20 and 21
+* Ubuntu: version 20 and 21
 
 Note: Just because an operating system is not supported by this script, doesn't
 mean that it's impossible to install NVIDIA drivers on it. You should check and

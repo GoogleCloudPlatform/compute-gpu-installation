@@ -41,7 +41,6 @@ OPERATING_SYSTEMS = (
     ("rhel-cloud", "rhel-8"),
     ("rocky-linux-cloud", "rocky-linux-8"),
     ("ubuntu-os-cloud", "ubuntu-2004-lts"),
-    ("ubuntu-os-cloud", "ubuntu-1804-lts"),
     ("ubuntu-os-cloud", "ubuntu-2204-lts"),
 )
 
