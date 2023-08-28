@@ -285,13 +285,12 @@ def install_dependencies_sles(system: System, version: str) -> bool:
     # For now, there is not SLES script working.
 
 
-def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
+def install_dependencies_debian_ubuntu(system: System, version: str, kernel_package) -> bool:
     """
     Installs kernel-related packages and pciutils for Debian and Ubuntu.
     """
-    kernel_version = run("uname -r").stdout.decode().strip()
     run("apt update")
-    run(f"apt install -y linux-headers-{kernel_version} "
+    run(f"apt install -y {kernel_package} "
         "software-properties-common pciutils gcc make dkms")
     if system == System.Ubuntu and version.startswith("22"):
         run("update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 --slave /usr/bin/g++ g++ /usr/bin/g++-12 --slave /usr/bin/gcov gcov /usr/bin/gcov-12")
@@ -323,8 +322,10 @@ def install_dependencies(system: System, version: str):
 
     if system in (System.CentOS, System.RHEL, System.Rocky):
         reboot_flag = install_dependencies_centos_rhel_rocky(system, version)
-    elif system in (System.Debian, System.Ubuntu):
-        reboot_flag = install_dependencies_debian_ubuntu(system, version)
+    elif system == System.Debian:
+        reboot_flag = install_dependencies_debian_ubuntu(system, version, "linux-headers-cloud-amd64")
+    elif system == System.Ubuntu:
+        reboot_flag = install_dependencies_debian_ubuntu(system, version, "linux-headers-gcp")
     elif system == System.SUSE:
         reboot_flag = install_dependencies_sles(system, version)
     else:
