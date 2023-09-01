@@ -287,14 +287,20 @@ def install_dependencies_sles(system: System, version: str) -> bool:
 
 def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
     """
-    Installs kernel-related packages and pciutils for Debian and Ubuntu.
+    Prepares Debian and Ubuntu systems for driver installation. Makes sure the kernel is up to date, all
+    required packages are installed and correct version of g++ will be used.
     """
     kernel_version = run("uname -r").stdout.decode().strip()
     run("apt update")
+    upgrade = run("apt upgrade -y").stdout.decode()
+    if "Generating grub configuration file" in upgrade:
+        # There was a kernel update, we need to reboot to work with proper kernel version
+        return True
     run(f"apt install -y linux-headers-{kernel_version} "
         "software-properties-common pciutils gcc make dkms")
     if system == System.Ubuntu and version.startswith("22"):
-        run("update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 --slave /usr/bin/g++ g++ /usr/bin/g++-12 --slave /usr/bin/gcov gcov /usr/bin/gcov-12")
+        run("update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 "
+            "--slave /usr/bin/g++ g++ /usr/bin/g++-12 --slave /usr/bin/gcov gcov /usr/bin/gcov-12")
     return False
 
 
