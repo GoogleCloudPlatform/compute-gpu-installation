@@ -33,25 +33,27 @@ INSTALLATION_TIMEOUT = 30*60  # 30 minutes
 
 # Cloud project and family
 OPERATING_SYSTEMS = (
-    ("centos-cloud", "centos-7"),
+    # ("centos-cloud", "centos-7"),
     ("centos-cloud", "centos-stream-8"),
-    ("debian-cloud", "debian-10"),
-    ("debian-cloud", "debian-11"),
-    ("rhel-cloud", "rhel-7"),
+    # ("debian-cloud", "debian-10"),
+    # ("debian-cloud", "debian-11"),
+    # ("rhel-cloud", "rhel-7"),
     ("rhel-cloud", "rhel-8"),
-    ("rocky-linux-cloud", "rocky-linux-8"),
-    ("ubuntu-os-cloud", "ubuntu-2004-lts"),
-    ("ubuntu-os-cloud", "ubuntu-2204-lts"),
+    ("rhel-cloud", "rhel-9"),
+    # ("rocky-linux-cloud", "rocky-linux-8"),
+    ("rocky-linux-cloud", "rocky-linux-9"),
+    # ("ubuntu-os-cloud", "ubuntu-2004-lts"),
+    # ("ubuntu-os-cloud", "ubuntu-2204-lts"),
 )
 
 GPUS = {
-    "L4": "nvidia-l4",
-    "A100": "nvidia-tesla-a100",
+    # "L4": "nvidia-l4",
+    # "A100": "nvidia-tesla-a100",
     "K80": "nvidia-tesla-k80",
-    "P4": "nvidia-tesla-p4",
+    # "P4": "nvidia-tesla-p4",
     "T4": "nvidia-tesla-t4",
-    "P100": "nvidia-tesla-p100",
-    "V100": "nvidia-tesla-v100",
+    # "P100": "nvidia-tesla-p100",
+    # "V100": "nvidia-tesla-v100",
 }
 
 GPU_QUOTA_SEMAPHORES = {

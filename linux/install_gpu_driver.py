@@ -43,14 +43,13 @@ class System(Enum):
 
 
 # CentOS 7 and RHEL 7 may require Python3 to be installed before this script can be run.
-# SLES and RHEL need a reboot after installation to load the driver.
 SUPPORTED_SYSTEMS = {
     # CentOS 8 is dead: https://www.centos.org/centos-linux-eol/, but there's CentOS Stream 8
     System.CentOS: {"7", "8"},
     System.Debian: {"10", "11"},
     System.Fedora: set(),
-    System.RHEL: {"7", "8"},
-    System.Rocky: {"8"},
+    System.RHEL: {"7", "8", "9"},
+    System.Rocky: {"8", "9"},
     System.SUSE: set(),
     System.Ubuntu: {"18", "20", "21", "22"}
 }
@@ -108,7 +107,7 @@ print_out = Logger.print_out
 print_err = Logger.print_err
 
 
-def run(command: str, check=True, input=None, cwd=None, silent=False, environment=None) -> subprocess.CompletedProcess:
+def run(command: str, check=True, input=None, cwd=None, silent=False, environment=None, retries=0) -> subprocess.CompletedProcess:
     """
     Runs a provided command, streaming its output to the log files.
 
@@ -118,6 +117,7 @@ def run(command: str, check=True, input=None, cwd=None, silent=False, environmen
     :param cwd: Directory in which to execute the command.
     :param silent: If set to True, the output of command won't be logged or printed.
     :param environment: A set of environment variable for the process to use. If None, the current env is inherited.
+    :param retries: How many times should the command be repeated if it exits with non-zero code.
 
     :return: CompletedProcess instance - the result of the command execution.
     """
@@ -127,9 +127,20 @@ def run(command: str, check=True, input=None, cwd=None, silent=False, environmen
         print_out(log_msg)
         print_err(log_msg, print_=False)
 
-    proc = subprocess.run(shlex.split(command), check=check,
-                          stderr=subprocess.PIPE, stdout=subprocess.PIPE,
-                          input=input, cwd=cwd, env=environment)
+    try_count = 0
+    while try_count <= retries:
+        try:
+            proc = subprocess.run(shlex.split(command), check=check,
+                                  stderr=subprocess.PIPE, stdout=subprocess.PIPE,
+                                  input=input, cwd=cwd, env=environment)
+        except subprocess.SubprocessError as err:
+            print_err(f"Error while executing `{command}`:")
+            print_err(str(err))
+            if try_count == retries:
+                raise err
+        else:
+            break
+        try_count += 1
 
     if not silent:
         print_err(proc.stderr.decode())
@@ -161,7 +172,7 @@ def check_python_version():
         return
     version = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
     raise RuntimeError("Unsupported Python version {}. "
-                       "Supported versions: 3.6 - 3.10".format(version))
+                       "Supported versions: 3.6 - 3.11".format(version))
 
 
 def detect_linux_distro() -> (System, str):
@@ -253,22 +264,23 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
     if "already installed" not in kernel_install.stdout.decode():
         return True  # Kernel update requires a reboot
     if system == System.Rocky:
-        run("dnf config-manager --set-enabled powertools")
-        run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
+        if version.startswith("8"):
+            run("dnf config-manager --set-enabled powertools")
+        run(f"dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel{version[0]}/x86_64/cuda-rhel{version[0]}.repo")
         run("dnf update -y --skip-broken")
         run("dnf install -y epel-release")
         run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
     elif system == System.CentOS and version.startswith("8"):
         run("dnf config-manager --set-enabled powertools")
         run("dnf install -y epel-release epel-next-release")
-    elif system == System.RHEL and version.startswith("8"):
-        run("dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo")
-        run("dnf update -y --skip-broken")
-        run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
-        run("dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm")
-    elif system in (System.RHEL, System.CentOS) and version.startswith("9"):
+    elif system == System.CentOS and version.startswith("9"):
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-next-release-9-1.el9.next.noarch.rpm")
         run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-release-9-1.el9.next.noarch.rpm")
+    elif system == System.RHEL and version[0] in ("8", "9"):
+        run(f"dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel{version[0]}/x86_64/cuda-rhel{version[0]}.repo")
+        run("dnf update -y --skip-broken")
+        run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
+        run(f"dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-{version[0]}.noarch.rpm")
 
     run(f"{binary} install -y kernel-devel epel-release "
         f"kernel-headers pciutils gcc make dkms acpid "
@@ -361,7 +373,6 @@ def install_driver_runfile(system: System, version: str):
     else:
         run(f"curl -fSsl -O {DRIVER_URL}")
         binary = f"NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
-
 
     attempt = 0
     no_drm = ""
