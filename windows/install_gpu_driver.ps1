@@ -105,7 +105,7 @@ function Install-Driver {
     $ProgressPreference_tmp = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest $url -OutFile $file_dir
-    $ProgressPreference = ProgressPreference_tmp
+    $ProgressPreference = $ProgressPreference_tmp
 
     # Install the file with the specified path from earlier as well as the RunAs admin option
     Start-Process -FilePath $file_dir -ArgumentList $install_args -Wait
