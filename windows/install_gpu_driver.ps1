@@ -100,8 +100,12 @@ function Install-Driver {
         New-Item -Path 'C:\' -Name 'NVIDIA-Driver' -ItemType 'directory' | Out-Null
     }
 
-    # Download the file to a specfied directory
+    # Download the file to a specified directory
+    # Disabling progress bar due to https://github.com/GoogleCloudPlatform/compute-gpu-installation/issues/29
+    $ProgressPreference_tmp = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest $url -OutFile $file_dir
+    $ProgressPreference = ProgressPreference_tmp
 
     # Install the file with the specified path from earlier as well as the RunAs admin option
     Start-Process -FilePath $file_dir -ArgumentList $install_args -Wait
