@@ -104,11 +104,15 @@ function Install-Driver {
     # Disabling progress bar due to https://github.com/GoogleCloudPlatform/compute-gpu-installation/issues/29
     $ProgressPreference_tmp = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue'
+    Write-Output 'Downloading the driver installer...'
     Invoke-WebRequest $url -OutFile $file_dir
     $ProgressPreference = $ProgressPreference_tmp
+    Write-Output 'Download complete!'
 
     # Install the file with the specified path from earlier as well as the RunAs admin option
+    Write-Output 'Running the driver installer...'
     Start-Process -FilePath $file_dir -ArgumentList $install_args -Wait
+    Write-Output 'Done!'
 }
 
 # Run the functions
