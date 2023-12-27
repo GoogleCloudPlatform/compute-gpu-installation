@@ -302,6 +302,9 @@ def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
     Prepares Debian and Ubuntu systems for driver installation. Makes sure the kernel is up to date, all
     required packages are installed and correct version of g++ will be used.
     """
+    # To make sure we don't get stuck waiting for user input.
+    os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
+
     kernel_version = run("uname -r").stdout.decode().strip()
     run("apt update")
     upgrade = run("apt upgrade -y").stdout.decode()
