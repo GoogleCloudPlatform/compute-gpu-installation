@@ -7,11 +7,5 @@ class RHELInstaller(DNFSystemInstaller):
 
     @checkpoint_decorator("prerequisites", "System preparations already done.")
     def _install_prerequisites(self):
-        self.run("dnf --refresh install -y kernel kernel-devel kernel-headers gcc gcc-c++ make")
+        self.run("dnf --refresh install -y kernel kernel-devel kernel-headers gcc gcc-c++ make bzip2")
         raise RebootRequired
-
-    def uninstall_cuda(self):
-        pass
-
-    def verify_cuda(self) -> bool:
-        pass

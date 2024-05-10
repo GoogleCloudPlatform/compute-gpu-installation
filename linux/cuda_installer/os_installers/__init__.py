@@ -135,7 +135,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         return success
 
     @checkpoint_decorator("cuda_installation", "CUDA toolkit already marked as installed.")
-    def install_cuda(self):
+    def _install_cuda(self):
         if self.device_code == K80_DEVICE_CODE:
             logger.info("CUDA installation is not supported for K80 GPUs.")
             return
@@ -153,6 +153,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         self.cuda_postinstallation_actions()
         logger.info("CUDA post-installation actions completed!")
         raise RebootRequired
+
+    def install_cuda(self):
+        try:
+            self._install_cuda()
+        except RebootRequired:
+            self.reboot()
 
     def cuda_postinstallation_actions(self):
         """
@@ -194,11 +200,24 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         """
         logger.info("Verifying CUDA installation...")
         with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir = pathlib.Path(temp_dir)
             with chdir(temp_dir):
                 logger.info(f"Using {temp_dir} to download, build and execute code samples.")
                 samples_tar = self.download_file(CUDA_SAMPLES_TARGZ, CUDA_SAMPLES_SHA256_SUM)
-
-
+                self.run(f"tar -xf {samples_tar.name}")
+                with chdir(temp_dir / "cuda-samples-12.4.1/Samples/1_Utilities/deviceQuery"):
+                    self.run("make", check=True)
+                    dev_query = self.run("./deviceQuery", check=True)
+                    if "Result = PASS" not in dev_query.stdout:
+                        logger.error("Cuda Toolkit verification failed. DeviceQuery sample failed.")
+                        return False
+                with chdir(temp_dir / "cuda-samples-12.4.1/Samples/1_Utilities/bandwidthTest"):
+                    self.run("make", check=True)
+                    bandwidth = self.run("./bandwidthTest", check=True)
+                    if "Result = PASS" not in bandwidth.stdout:
+                        logger.error("Cuda Toolkit verification failed. BandwidthTest sample failed.")
+                        return False
+        logger.info("Cuda Toolkit verification completed!")
         return True
 
     @staticmethod
@@ -344,7 +363,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             return file_path
 
         if not file_path.exists():
-            self.run(f"curl -fSsl -O {url}")
+            self.run(f"curl -fSsL -O {url}")
 
         checksum = self.run(f"sha256sum {file_path}").stdout.strip().split()[0]
         if checksum != sha256sum:

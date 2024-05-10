@@ -37,9 +37,3 @@ class UbuntuInstaller(LinuxInstaller):
                  f"linux-headers-gcp "
                  f"linux-image-{self.kernel_version} "
                  f"linux-headers-{self.kernel_version}")
-
-    def uninstall_cuda(self):
-        pass
-
-    def verify_cuda(self) -> bool:
-        pass

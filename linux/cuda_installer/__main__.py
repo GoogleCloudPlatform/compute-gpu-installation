@@ -48,3 +48,5 @@ if __name__ == '__main__':
         installer.uninstall_driver()
     elif args.command == "install_cuda":
         installer.install_cuda()
+    elif args.command == "verify_cuda":
+        installer.verify_cuda()

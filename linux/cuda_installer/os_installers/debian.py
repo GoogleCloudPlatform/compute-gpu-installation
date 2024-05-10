@@ -57,14 +57,6 @@ class DebianInstaller(LinuxInstaller):
                  f"linux-headers-cloud-amd64"
                  )
 
-    def uninstall_driver(self):
-        pass
-
-    def uninstall_cuda(self):
-        pass
-
-    def verify_cuda(self):
-        pass
 
     def upgrade_kernel(self):
         # Update package: linux-image-cloud-amd64

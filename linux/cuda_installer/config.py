@@ -22,4 +22,4 @@ CUDA_PROFILE_FILENAME = pathlib.Path("/etc/profile.d/google_cuda_install.sh")
 CUDA_BIN_FOLDER = "/usr/local/cuda-12.4/bin"
 CUDA_LIB_FOLDER = "/usr/local/cuda-12.4/lib64"
 
-NVIDIA_PERSISTANCED_INSTALLER = "/usr/share/doc/NVIDIA_GLX-1.0/sample/nvidia-persistenced-init.tar.bz2"
+NVIDIA_PERSISTANCED_INSTALLER = "/usr/share/doc/NVIDIA_GLX-1.0/samples/nvidia-persistenced-init.tar.bz2"
