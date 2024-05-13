@@ -65,8 +65,8 @@ class DebianInstaller(LinuxInstaller):
         self.run(
             f"apt-mark hold "
             f"linux-image-{self.kernel_version} "
-            f"linux-headers-{self.kernel_version}"
-            f"linux-image-cloud-amd64"
+            f"linux-headers-{self.kernel_version} "
+            f"linux-image-cloud-amd64 "
             f"linux-headers-cloud-amd64"
         )
 
@@ -78,7 +78,7 @@ class DebianInstaller(LinuxInstaller):
         self.run(
             f"apt-mark unhold "
             f"linux-image-{self.kernel_version} "
-            f"linux-headers-{self.kernel_version}"
-            f"linux-image-cloud-amd64"
+            f"linux-headers-{self.kernel_version} "
+            f"linux-image-cloud-amd64 "
             f"linux-headers-cloud-amd64"
         )

@@ -19,9 +19,12 @@ import re
 import shlex
 import subprocess
 import sys
+import warnings
 from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
+
+warnings.warn("This script is being deprecated. Please use cuda_installer as replacement.", DeprecationWarning)
 
 DRIVER_VERSION = "525.125.06"
 K80_DRIVER_VERSION = "470.199.02"

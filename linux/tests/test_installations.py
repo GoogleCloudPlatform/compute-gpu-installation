@@ -17,39 +17,45 @@ import subprocess
 import sys
 import tempfile
 import time
+import random
 import uuid
+import zipapp
 from pathlib import Path
-from threading import BoundedSemaphore
+from multiprocessing import BoundedSemaphore
 from typing import Tuple
 
 import google.api_core.exceptions
 import google.auth
 import pytest
+from google.cloud import iam_admin_v1
 from google.cloud import compute_v1
+from google.cloud import storage
+from google.cloud.storage.constants import STANDARD_STORAGE_CLASS
 
 PROJECT = google.auth.default()[1]
 
 INSTALLATION_TIMEOUT = 30*60  # 30 minutes
 
+GS_BUCKET_NAME = f"{PROJECT}-cuda-installer-tests"
+
 # Cloud project and family
 OPERATING_SYSTEMS = (
-    # ("centos-cloud", "centos-7"),
-    ("centos-cloud", "centos-stream-8"),
-    # ("debian-cloud", "debian-10"),
-    # ("debian-cloud", "debian-11"),
-    # ("rhel-cloud", "rhel-7"),
+    ("debian-cloud", "debian-10"),
+    ("debian-cloud", "debian-11"),
+    ("debian-cloud", "debian-12"),
     ("rhel-cloud", "rhel-8"),
     ("rhel-cloud", "rhel-9"),
-    # ("rocky-linux-cloud", "rocky-linux-8"),
+    ("rocky-linux-cloud", "rocky-linux-8"),
     ("rocky-linux-cloud", "rocky-linux-9"),
-    # ("ubuntu-os-cloud", "ubuntu-2004-lts"),
-    # ("ubuntu-os-cloud", "ubuntu-2204-lts"),
+    ("ubuntu-os-cloud", "ubuntu-2004-lts"),
+    ("ubuntu-os-cloud", "ubuntu-2204-lts"),
+    ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
 )
 
 GPUS = {
     # "L4": "nvidia-l4",
     # "A100": "nvidia-tesla-a100",
-    "K80": "nvidia-tesla-k80",
+    # "K80": "nvidia-tesla-k80",
     # "P4": "nvidia-tesla-p4",
     "T4": "nvidia-tesla-t4",
     # "P100": "nvidia-tesla-p100",
@@ -59,21 +65,21 @@ GPUS = {
 GPU_QUOTA_SEMAPHORES = {
     "L4": BoundedSemaphore(8),
     "A100": BoundedSemaphore(8),
-    "K80": BoundedSemaphore(8),
+    "K80": BoundedSemaphore(16),
     "P4": BoundedSemaphore(1),
-    "T4": BoundedSemaphore(4),
+    "T4": BoundedSemaphore(8),
     "P100": BoundedSemaphore(1),
     "V100": BoundedSemaphore(8),
 }
 
 ZONES = {
-    "L4": "us-central1-a",
-    "A100": "us-central1-f",
-    "K80": "us-central1-a",
-    "P4": "us-central1-a",
-    "T4": "us-central1-b",
-    "P100": "us-central1-c",
-    "V100": "us-central1-a",
+    "L4": ("us-central1-a",),
+    "A100": ("us-central1-f",),
+    "K80": ("us-central1-a",),
+    "P4": ("us-central1-a",),
+    "T4": ("us-central1-b", "northamerica-northeast1-c", "us-west1-b", "europe-central2-b", "europe-west1-b"),
+    "P100": ("us-central1-c",),
+    "V100": ("us-central1-a",),
 }
 
 MACHINE_TYPES = {
@@ -85,6 +91,61 @@ MACHINE_TYPES = {
     "P100": "n1-standard-8",
     "V100": "n1-standard-8",
 }
+
+
+@pytest.fixture(scope="session")
+def service_account():
+    iam_admin_client = iam_admin_v1.IAMClient()
+
+    sa_full_name = f"cuda-tester@{PROJECT}.iam.gserviceaccount.com"
+    if sa_full_name in (sa.email for sa in iam_admin_client.list_service_accounts(name=f"projects/{PROJECT}")):
+        yield sa_full_name
+        return
+
+    request = iam_admin_v1.CreateServiceAccountRequest()
+
+    request.account_id = "cuda-tester"
+    request.name = f"projects/{PROJECT}"
+
+    service_account = iam_admin_v1.ServiceAccount()
+    service_account.display_name = "Cuda Installer testing account"
+    request.service_account = service_account
+
+    account = iam_admin_client.create_service_account(request)
+
+    yield account.email
+
+
+@pytest.fixture(scope="session")
+def gs_bucket():
+    storage_client = storage.Client()
+
+    if GS_BUCKET_NAME in (b.name for b in storage_client.list_buckets()):
+        bucket = storage_client.get_bucket(GS_BUCKET_NAME)
+        yield bucket
+        return
+
+    # Need to create the bucket
+    bucket = storage_client.bucket(GS_BUCKET_NAME)
+    bucket.storage_class = STANDARD_STORAGE_CLASS
+    yield storage_client.create_bucket(bucket, location="us-central1")
+
+
+@pytest.fixture(scope="session")
+def zipapp_gs_url(gs_bucket: storage.Bucket, service_account: str):
+    """
+    Package the cuda_installer to a zipapp file and upload to a GS bucket.
+    """
+    file_name = f"cuda-installer-{uuid.uuid4().hex[:8]}.pyz"
+    with tempfile.NamedTemporaryFile(mode="wb+", suffix=".pyz") as pyz_file:
+        zipapp.create_archive("../cuda_installer", pyz_file.file)
+        pyz_file.seek(0)
+        blob = gs_bucket.blob(file_name)
+        blob.upload_from_filename(pyz_file.name, if_generation_match=0)
+        blob.acl.reload()
+        blob.acl.user(service_account).grant_read()
+        blob.acl.save()
+        yield f"gs://{gs_bucket.name}/{blob.name}"
 
 
 @pytest.fixture(scope='module')
@@ -150,11 +211,11 @@ def read_ssh_pubkey(ssh_key: str) -> str:
 
 
 @pytest.mark.parametrize("opsys,gpu", itertools.product(OPERATING_SYSTEMS, GPUS))
-def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: str):
+def test_install_driver_for_system(zipapp_gs_url: str, service_account: str, ssh_key: str, opsys: Tuple[str, str], gpu: str):
     """
     Run the installation test for given operating system and GPU card.
     """
-    zone = ZONES[gpu]
+    zone = random.choice(ZONES[gpu])
 
     op_sys_image = get_image_from_family(*opsys)
     disks = [_get_boot_disk(op_sys_image.self_link, zone)]
@@ -178,6 +239,10 @@ def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: st
     instance.disks = disks
     instance.guest_accelerators = [accelerator]
     instance.network_interfaces = [network_interface]
+    compute_sa = compute_v1.ServiceAccount()
+    compute_sa.email = service_account
+    compute_sa.scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    instance.service_accounts = [compute_sa]
 
     # Instance with GPU has to have LiveMigration disabled
     instance.scheduling = compute_v1.Scheduling()
@@ -189,8 +254,8 @@ def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: st
     instance.metadata = compute_v1.Metadata()
     meta_item = compute_v1.Items()
     meta_item.key = 'startup-script'
-    with open(Path(__file__).parent / '../startup_script.sh') as script:
-        meta_item.value = script.read()
+    with open(Path(__file__).parent / 'startup_script.sh') as script:
+        meta_item.value = script.read().format(GS_INSTALLER_PATH=zipapp_gs_url)
     ssh_item = compute_v1.Items()
     ssh_item.key = 'ssh-keys'
     ssh_item.value = read_ssh_pubkey(ssh_key)
@@ -208,36 +273,33 @@ def test_install_driver_for_system(ssh_key: str, opsys: Tuple[str, str], gpu: st
     instance_client = compute_v1.InstancesClient()
     operation_client = compute_v1.ZoneOperationsClient()
 
-    with GPU_QUOTA_SEMAPHORES[gpu]:
-        # Making sure not to exceed the GPU quota while executing the tests
-        # in multiple threads.
+    try:
+        operation = instance_client.insert_unary(request)
+        operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+
+        if operation.error:
+            print(f"Error during instance {instance_name} creation:", operation.error, file=sys.stderr)
+            raise RuntimeError(operation.error)
+
+        if operation.warnings:
+            msgs = []
+            for warning in operation.warnings:
+                if warning.code != 'DISK_SIZE_LARGER_THAN_IMAGE_SIZE':
+                    msgs.append(f" - {warning.code}: {warning.message}")
+            if msgs:
+                print(f"Warnings during instance {instance_name} creation:\n", file=sys.stderr)
+                for msg in msgs:
+                    print(msg, file=sys.stderr)
+
+        _test_body(zone, instance_name, gpu, ssh_key)
+    finally:
         try:
-            operation = instance_client.insert_unary(request)
-            operation = operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
-
-            if operation.error:
-                print(f"Error during instance {instance_name} creation:", operation.error, file=sys.stderr)
-                raise RuntimeError(operation.error)
-
-            if operation.warnings:
-                msgs = []
-                for warning in operation.warnings:
-                    if warning.code != 'DISK_SIZE_LARGER_THAN_IMAGE_SIZE':
-                        msgs.append(f" - {warning.code}: {warning.message}")
-                if msgs:
-                    print(f"Warnings during instance {instance_name} creation:\n", file=sys.stderr)
-                    for msg in msgs:
-                        print(msg, file=sys.stderr)
-
-            _test_body(zone, instance_name, gpu, ssh_key)
-        finally:
-            try:
-                # print("This is where I'd delete the instance, but we keep it for debugging.")
-                operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
-                operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
-            except google.api_core.exceptions.NotFound:
-                # The instance was not properly created at all.
-                pass
+            # print("This is where I'd delete the instance, but we keep it for debugging.")
+            operation = instance_client.delete_unary(project=PROJECT, zone=zone, instance=instance_name)
+            operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+        except google.api_core.exceptions.NotFound:
+            # The instance was not properly created at all.
+            pass
 
 
 def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
@@ -255,7 +317,7 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
             process = subprocess.run(
                 ["gcloud", "compute", "ssh", instance_name, "--zone", zone,
                  "--ssh-key-file", ssh_key,
-                 "--command", "ls /opt/google/gpu-installer"],
+                 "--command", "ls /opt/google/cuda-installer"],
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 text=True,
@@ -265,9 +327,23 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
             continue
         else:
             output = process.stdout, process.stderr
-            if 'success' in process.stdout:
+            print("Output:", output)
+            if 'cuda_installation' in process.stdout:
                 # Installation appears to be completed successfully
-                break
+                process = subprocess.run(
+                    ["gcloud", "compute", "ssh", instance_name, "--zone", zone,
+                    "--ssh-key-file", ssh_key,
+                    "--command", "sudo python3 /opt/google/cuda-installer/cuda_installer.pyz verify_cuda"],
+                    stderr=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    text=True,
+                    timeout=300
+                )
+                print("process.stdout: ", process.stdout)
+                if "Cuda Toolkit verification completed!" in process.stdout:
+                    # Now we're sure that the installation worked.
+                    break
+                pytest.fail(f"Cuda verification failed for {instance_name}!")
     else:
         print(f"Tried to run SSH connection {tries} times.")
         print(f"Standard output from {instance_name}:\n" + output[0])
