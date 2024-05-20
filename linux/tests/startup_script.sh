@@ -1,10 +1,10 @@
 #!/bin/bash
-if test -f /opt/google/cuda-installer/
+if test -f /opt/google/cuda-installer
 then
   exit
 fi
 
-mkdir -p /opt/google/cuda-installer/
+mkdir -p /opt/google/cuda-installer
 cd /opt/google/cuda-installer/ || exit
 
 gsutil cp {GS_INSTALLER_PATH} cuda_installer.pyz

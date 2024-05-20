@@ -1,21 +1,11 @@
 #!/bin/bash
-if which nvidia-smi
+if test -f /opt/google/cuda-installer
 then
   exit
 fi
 
-mkdir -p /opt/google
-cd /opt/google || exit
+mkdir -p /opt/google/cuda-installer
+cd /opt/google/cuda-installer/ || exit
 
-if ! which python3 > /dev/null
-then
-  if which yum > /dev/null
-  then
-    yum install -y python3
-  else
-    apt-get install -y python3
-  fi
-fi
-
-curl https://raw.githubusercontent.com/GoogleCloudPlatform/compute-gpu-installation/main/linux/install_gpu_driver.py --output install_gpu_driver.py
-python3 install_gpu_driver.py
+curl -fSsL -O https://github.com/GoogleCloudPlatform/compute-gpu-installation/releases/download/cuda-installer-v1.0.0/cuda_installer.pyz
+python3 cuda_installer.pyz install_cuda
