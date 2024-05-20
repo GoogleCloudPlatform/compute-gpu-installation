@@ -1,48 +1,47 @@
-# Installation for Linux.
+# Installation for Linux
 
-In the `install_gpu_driver.py` you can find a script that automates installation
-of newer GPU drivers for NVIDIA GPU drivers available for Google Compute Engine
-instances.
+The recommended way to install NVIDIA GPU drivers and CUDA Toolkit for Google Cloud Compute Engine 
+instances is through the cuda_installer tool. Look for the newest version in the
+[releases](https://github.com/GoogleCloudPlatform/compute-gpu-installation/releases)
+section of this repository.
 
-The script support the following operating systems:
+The `install_gpu_driver.py` script is still available to not break existing setups,
+but is considered deprecated and should not be used anymore.
 
-* CentOS: versions 7
-* CentOS Stream: version 8
-* Debian: versions 10 and 11
-* RHEL: versions 7 and 8
-* Rocky: version 8
-* Ubuntu: version 20 and 21
+The tool supports following operating systems (x86_64/amd64 architecture):
 
-Note: Just because an operating system is not supported by this script, doesn't
-mean that it's impossible to install NVIDIA drivers on it. You should check and
-try instructions on
-[NVIDIAs website](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)
-to discover other ways of installing drivers.
+* Debian: versions 10, 11 and 12
+* RHEL: versions 8 and 9
+* Rocky: version 8 and 9
+* Ubuntu: version 20, 22 and 24
+
+Note: Just because an operating system is not listed as supported by this tool,  
+it doesn't mean that it's impossible to install NVIDIA drivers on it. You should check and
+try instructions on [NVIDIAs website](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) to discover other ways of installing drivers.
 
 ## Requirements
 
 The system on which you want to run the script needs to meet the following
 requirements:
 
-*   Python interpreter in version 3.6 installed (by default available in all
-    supported OSes except CentOS 7 and RHEL 7).
-*   Access to Internet (the script needs to download the driver).
-*   (optional) At least one GPU unit attached.
+*   Python interpreter in version 3.6 or newer installed.
+*   Access to Internet (the script needs to download the driver and CUDA tookit).
+*   At least one GPU unit attached.
 
-## Running the script
+## Running the tool
 
-The `install_gpu_driver.py` script needs to be executed with root privileges
-(for example `sudo python3 install_gpu_driver.py`).
+The `cuda_installer.pyz` script needs to be executed with root privileges
+(for example `sudo python3 cuda_installer.pyz`).
 
-Note: On some systems the script might trigger system reboot, it
-needs to be restarted after the reboot is done.
+Note: During the installation the script will trigger system reboots. After a
+reboot, the script needs to be started again to continue the installation process.
 
-After the installation, you should restart your system to make sure everything
-is initialized properly and working.
+After successfully installation, the tool will restart your system once more to make 
+sure everything is initialized properly and working system-wide.
 
 ## Script output
 
-The installation script logs its outputs to `/opt/google/gpu-installer/` folder.
+The installation tool logs its outputs to `/opt/google/cuda-installer/` folder.
 If you are facing any problems with the installation, this should be the first
 place to check for any errors. When asking for support, you will be asked to
 provide the log files from this folder.

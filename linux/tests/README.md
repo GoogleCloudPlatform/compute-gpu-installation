@@ -10,13 +10,4 @@ manually on local developer machine. Required steps:
 3. Install required Python packages `pip install -Ur requirements.txt`
 4. Run test using `pytest` command. You can speed up the 
    process by using parallel execution with 
-   `pytest --workers 1 --tests-per-worker 10`. Remember to use only one
-  process, as the tests use thread semaphores to make sure they don't exceed
-  GPU quota
-
-
-Note: The VMs created for this test don't have external IP
-addresses assigned, so it's required for the project
-they are created in to have Cloud NAT configured for the
-default VPC Network. Without it, the instances won't be
-able to download necessary drivers.
+   `pytest -n auto`. 

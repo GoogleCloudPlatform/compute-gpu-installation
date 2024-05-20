@@ -19,11 +19,14 @@ import re
 import shlex
 import subprocess
 import sys
+import warnings
 from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
 
-DRIVER_VERSION = "525.125.06"
+warnings.warn("This script is being deprecated. Please use cuda_installer as replacement.", DeprecationWarning)
+
+DRIVER_VERSION = "550.54.15"
 K80_DRIVER_VERSION = "470.199.02"
 
 DRIVER_URL = f"https://us.download.nvidia.com/tesla/{DRIVER_VERSION}/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
