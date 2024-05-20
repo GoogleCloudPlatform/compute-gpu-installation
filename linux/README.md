@@ -37,7 +37,7 @@ Note: During the installation the script will trigger system reboots. After a
 reboot, the script needs to be started again to continue the installation process.
 
 After successfully installation, the tool will restart your system once more to make 
-sure everything is initialized properly and working system wide.
+sure everything is initialized properly and working system-wide.
 
 ## Script output
 
