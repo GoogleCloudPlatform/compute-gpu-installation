@@ -19,6 +19,10 @@ from os_installers.dnf_system import DNFSystemInstaller
 
 class RHELInstaller(DNFSystemInstaller):
 
+    def __init__(self):
+        self.run("dnf install -y pciutils", silent=True)
+        DNFSystemInstaller.__init__(self)
+
     @checkpoint_decorator("prerequisites", "System preparations already done.")
     def _install_prerequisites(self):
         self.run(

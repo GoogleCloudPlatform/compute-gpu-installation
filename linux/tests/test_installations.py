@@ -77,7 +77,7 @@ ZONES = {
     "A100": ("us-central1-f",),
     "K80": ("us-central1-a",),
     "P4": ("us-central1-a",),
-    "T4": ("us-central1-b", "northamerica-northeast1-c", "us-west1-b", "europe-central2-b", "europe-west1-b"),
+    "T4": ("us-central1-b", "europe-west2-a", "us-west1-b", "northamerica-northeast1-c", "europe-west3-b"),
     "P100": ("us-central1-c",),
     "V100": ("us-central1-a",),
 }
@@ -220,12 +220,13 @@ def test_install_driver_for_system(zipapp_gs_url: str, service_account: str, ssh
     op_sys_image = get_image_from_family(*opsys)
     disks = [_get_boot_disk(op_sys_image.self_link, zone)]
 
-    # We do not configure external IP to save on the billing,
-    # but the project you try to run this tests in needs to
-    # have a Cloud NAT configured, so the instances can
-    # download the drivers.
     network_interface = compute_v1.NetworkInterface()
     network_interface.name = "global/networks/default"
+    access = compute_v1.AccessConfig()
+    access.type_ = compute_v1.AccessConfig.Type.ONE_TO_ONE_NAT.name
+    access.name = "External NAT"
+    access.network_tier = access.NetworkTier.PREMIUM.name
+    network_interface.access_configs = [access]
 
     # GPUs
     accelerator = compute_v1.AcceleratorConfig()
@@ -329,6 +330,8 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
             output = process.stdout, process.stderr
             print("Output:", output)
             if 'cuda_installation' in process.stdout:
+                # Give it some time to reboot, as in some cases it can take a while.
+                time.sleep(60)
                 # Installation appears to be completed successfully
                 process = subprocess.run(
                     ["gcloud", "compute", "ssh", instance_name, "--zone", zone,
@@ -337,7 +340,7 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                     stderr=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     text=True,
-                    timeout=300
+                    timeout=600
                 )
                 print("process.stdout: ", process.stdout)
                 if "Cuda Toolkit verification completed!" in process.stdout:
