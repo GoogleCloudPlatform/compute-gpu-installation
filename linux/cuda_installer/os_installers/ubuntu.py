@@ -24,7 +24,7 @@ class UbuntuInstaller(LinuxInstaller):
         """
         Installs packages required for the proper driver installation on Debian.
         """
-        self.run("apt-get update", silent=True)
+        self.run("apt-get update")
 
         self.run(
             "apt-get install -y linux-image-gcp linux-headers-gcp "
