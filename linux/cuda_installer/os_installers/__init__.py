@@ -32,6 +32,9 @@ from config import (
     CUDA_TOOLKIT_SHA256_SUM,
     K80_DRIVER_SHA256_SUM,
     K80_DEVICE_CODE,
+    LATEST_DRIVER_VERSION,
+    LATEST_DRIVER_URL,
+    LATEST_DRIVER_SHA256_SUM,
     CUDA_PROFILE_FILENAME,
     CUDA_BIN_FOLDER,
     CUDA_LIB_FOLDER,
@@ -119,7 +122,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if self.device_code == K80_DEVICE_CODE:
             installer_path = self.download_k80_driver_installer()
         else:
-            installer_path = self.download_cuda_toolkit_installer()
+            installer_path = self.download_latest_driver_installer()
 
         logger.info("Installing prerequisite packages and updating kernel...")
         try:
@@ -127,12 +130,8 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         except RebootRequired:
             self.reboot()
 
-        if self.device_code == K80_DEVICE_CODE:
-            logger.info("Installing GPU drivers for K80...")
-            self.run(f"sh {installer_path} -s", check=True)
-        else:
-            logger.info("Installing GPU drivers for your device...")
-            self.run(f"sh {installer_path} --silent --driver", check=True)
+        logger.info("Installing GPU drivers for your device...")
+        self.run(f"sh {installer_path} -s", check=True)
 
         if self.verify_driver():
             self.lock_kernel_updates()
@@ -150,22 +149,15 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if not self.verify_driver():
             logger.info("GPU driver not found.")
             return
-        with tempfile.TemporaryDirectory() as temp_dir:
-            if self.device_code == K80_DEVICE_CODE:
-                installer_path = self.download_k80_driver_installer()
-            else:
-                installer_path = self.download_cuda_toolkit_installer()
-                logger.info(
-                    "Extracting NVIDIA driver installer, to complete uninstallation..."
-                )
-                self.run(f"sh {installer_path} --extract={temp_dir}", check=True)
-                installer_path = pathlib.Path(
-                    f"{temp_dir}/NVIDIA-Linux-x86_64-550.54.15.run"
-                )
 
-            logger.info("Starting uninstallation...")
-            self.run(f"sh {installer_path} -s --uninstall", check=True)
-            logger.info("Uninstallation completed!")
+        if self.device_code == K80_DEVICE_CODE:
+            installer_path = self.download_k80_driver_installer()
+        else:
+            installer_path = self.download_latest_driver_installer()
+
+        logger.info("Starting uninstallation...")
+        self.run(f"sh {installer_path} -s --uninstall", check=True)
+        logger.info("Uninstallation completed!")
         self.unlock_kernel_updates()
 
     def verify_driver(self, verbose: bool = False) -> bool:
@@ -453,6 +445,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
     def download_k80_driver_installer(self) -> pathlib.Path:
         logger.info("K80 GPU detected, downloading only the driver installer...")
         return self.download_file(K80_DRIVER_URL, K80_DRIVER_SHA256_SUM)
+
+    def download_latest_driver_installer(self) -> pathlib.Path:
+        logger.info(f"Downloading latest driver installer ({LATEST_DRIVER_VERSION})...")
+        return self.download_file(LATEST_DRIVER_URL, LATEST_DRIVER_SHA256_SUM)
 
     def download_file(self, url: str, sha256sum: str) -> pathlib.Path:
         """

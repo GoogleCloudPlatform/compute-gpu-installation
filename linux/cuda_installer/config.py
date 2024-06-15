@@ -28,9 +28,15 @@ K80_DRIVER_SHA256_SUM = (
     "7d74caac140a0432d79ebe8e4330dc796f39ba7dd40b3fcd61df760181bf9ccc"
 )
 
-CUDA_TOOLKIT_URL = "https://developer.download.nvidia.com/compute/cuda/12.4.1/local_installers/cuda_12.4.1_550.54.15_linux.run"
+LATEST_DRIVER_VERSION = "550.90.07"
+LATEST_DRIVER_URL = f"https://us.download.nvidia.com/tesla/{LATEST_DRIVER_VERSION}/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
+LATEST_DRIVER_SHA256_SUM = (
+    "51acf579d5a9884f573a1d3f522e7fafa5e7841e22a9cec0b4bbeae31b0b9733"
+)
+
+CUDA_TOOLKIT_URL = "https://developer.download.nvidia.com/compute/cuda/12.5.0/local_installers/cuda_12.5.0_555.42.02_linux.run"
 CUDA_TOOLKIT_SHA256_SUM = (
-    "367d2299b3a4588ab487a6d27276ca5d9ead6e394904f18bccb9e12433b9c4fb"
+    "90fcc7df48226434065ff12a4372136b40b9a4cbf0c8602bb763b745f22b7a99"
 )
 
 CUDA_SAMPLES_TARGZ = (
@@ -41,8 +47,8 @@ CUDA_SAMPLES_SHA256_SUM = (
 )
 
 CUDA_PROFILE_FILENAME = pathlib.Path("/etc/profile.d/google_cuda_install.sh")
-CUDA_BIN_FOLDER = "/usr/local/cuda-12.4/bin"
-CUDA_LIB_FOLDER = "/usr/local/cuda-12.4/lib64"
+CUDA_BIN_FOLDER = "/usr/local/cuda-12.5/bin"
+CUDA_LIB_FOLDER = "/usr/local/cuda-12.5/lib64"
 
 NVIDIA_PERSISTANCED_INSTALLER = (
     "/usr/share/doc/NVIDIA_GLX-1.0/samples/nvidia-persistenced-init.tar.bz2"

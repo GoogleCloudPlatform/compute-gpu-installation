@@ -138,7 +138,7 @@ def zipapp_gs_url(gs_bucket: storage.Bucket, service_account: str):
     """
     file_name = f"cuda-installer-{uuid.uuid4().hex[:8]}.pyz"
     with tempfile.NamedTemporaryFile(mode="wb+", suffix=".pyz") as pyz_file:
-        zipapp.create_archive("../cuda_installer", pyz_file.file)
+        zipapp.create_archive("cuda_installer", pyz_file.file)
         pyz_file.seek(0)
         blob = gs_bucket.blob(file_name)
         blob.upload_from_filename(pyz_file.name, if_generation_match=0)
