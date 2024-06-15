@@ -19,6 +19,7 @@ import sys
 
 import config
 from logger import logger
+
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import get_installer, debian, ubuntu, rhel, rocky
 
