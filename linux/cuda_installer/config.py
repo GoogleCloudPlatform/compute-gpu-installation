@@ -21,11 +21,12 @@ except PermissionError:
     pass
 
 
-K80_DRIVER_VERSION = "470.239.06"
+# K80 devices need to run on the 470 driver version. They are not supported by newer drivers.
+K80_DRIVER_VERSION = "470.256.02"
 K80_DEVICE_CODE = "10de:102d"
 K80_DRIVER_URL = f"https://us.download.nvidia.com/tesla/{K80_DRIVER_VERSION}/NVIDIA-Linux-x86_64-{K80_DRIVER_VERSION}.run"
 K80_DRIVER_SHA256_SUM = (
-    "7d74caac140a0432d79ebe8e4330dc796f39ba7dd40b3fcd61df760181bf9ccc"
+    "d6451862deb695bb0447f3b7cd6268f73e81168c10e2c10597ff3fa01349b1de"
 )
 
 LATEST_DRIVER_VERSION = "550.90.07"

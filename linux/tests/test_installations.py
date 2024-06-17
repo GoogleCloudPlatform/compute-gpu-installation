@@ -62,16 +62,6 @@ GPUS = {
     # "V100": "nvidia-tesla-v100",
 }
 
-GPU_QUOTA_SEMAPHORES = {
-    "L4": BoundedSemaphore(8),
-    "A100": BoundedSemaphore(8),
-    "K80": BoundedSemaphore(16),
-    "P4": BoundedSemaphore(1),
-    "T4": BoundedSemaphore(8),
-    "P100": BoundedSemaphore(1),
-    "V100": BoundedSemaphore(8),
-}
-
 ZONES = {
     "L4": ("us-central1-a",),
     "A100": ("us-central1-f",),
@@ -317,7 +307,7 @@ def test_install_driver_for_system(
                 )
                 for msg in msgs:
                     print(msg, file=sys.stderr)
-
+        print(f"Instance {instance_name} created.")
         _test_body(zone, instance_name, gpu, ssh_key)
     finally:
         try:
@@ -359,15 +349,17 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 text=True,
-                timeout=10,
+                timeout=60,
             )
         except subprocess.TimeoutExpired as err:
+            # print(".", end="", file=sys.stderr, flush=True)
             continue
         else:
             output = process.stdout, process.stderr
-            print("Output:", output)
+            # print("Output:", output, flush=True, file=sys.stderr)
             if "cuda_installation" in process.stdout:
                 # Give it some time to reboot, as in some cases it can take a while.
+                print(f"CUDA installation for {instance_name} should be complete now. Waiting 60s for a reboot.")
                 time.sleep(60)
                 # Installation appears to be completed successfully
                 process = subprocess.run(
@@ -388,7 +380,7 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                     text=True,
                     timeout=600,
                 )
-                print("process.stdout: ", process.stdout)
+                print("Verification output: ", process.stdout)
                 if "Cuda Toolkit verification completed!" in process.stdout:
                     # Now we're sure that the installation worked.
                     break
