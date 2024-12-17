@@ -40,7 +40,6 @@ GS_BUCKET_NAME = f"{PROJECT}-cuda-installer-tests"
 
 # Cloud project and family
 OPERATING_SYSTEMS = (
-    ("debian-cloud", "debian-10"),
     ("debian-cloud", "debian-11"),
     ("debian-cloud", "debian-12"),
     ("rhel-cloud", "rhel-8"),
