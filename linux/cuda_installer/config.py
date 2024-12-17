@@ -28,10 +28,10 @@ K80_DRIVER_SHA256_SUM = (
     "7d74caac140a0432d79ebe8e4330dc796f39ba7dd40b3fcd61df760181bf9ccc"
 )
 
-LATEST_DRIVER_VERSION = "565.77"
-LATEST_DRIVER_URL = f"https://us.download.nvidia.com/XFree86/Linux-x86_64/{LATEST_DRIVER_VERSION}/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
+LATEST_DRIVER_VERSION = "560.35.03"
+LATEST_DRIVER_URL = f"https://us.download.nvidia.com/tesla/{LATEST_DRIVER_VERSION}/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
 LATEST_DRIVER_SHA256_SUM = (
-    "0a7aa742c46bcf34d766982402d17b3db1fdb3bc1b89344d70cd123c1cb3147c"
+    "f2932c92fadd43c5b2341be453fc4f73f0ad7185c26bb7a43fbde81ae29f1fe3"
 )
 
 CUDA_TOOLKIT_URL = "https://developer.download.nvidia.com/compute/cuda/12.6.3/local_installers/cuda_12.6.3_560.35.05_linux.run"
