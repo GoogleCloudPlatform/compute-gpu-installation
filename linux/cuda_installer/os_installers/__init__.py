@@ -27,11 +27,8 @@ from enum import Enum, auto
 from typing import Optional, Union
 
 from config import (
-    K80_DRIVER_URL,
     CUDA_TOOLKIT_URL,
     CUDA_TOOLKIT_SHA256_SUM,
-    K80_DRIVER_SHA256_SUM,
-    K80_DEVICE_CODE,
     LATEST_DRIVER_VERSION,
     LATEST_DRIVER_URL,
     LATEST_DRIVER_SHA256_SUM,
@@ -119,10 +116,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             logger.info("GPU driver already installed.")
             return
 
-        if self.device_code == K80_DEVICE_CODE:
-            installer_path = self.download_k80_driver_installer()
-        else:
-            installer_path = self.download_latest_driver_installer()
+        installer_path = self.download_latest_driver_installer()
 
         logger.info("Installing prerequisite packages and updating kernel...")
         try:
@@ -150,10 +144,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             logger.info("GPU driver not found.")
             return
 
-        if self.device_code == K80_DEVICE_CODE:
-            installer_path = self.download_k80_driver_installer()
-        else:
-            installer_path = self.download_latest_driver_installer()
+        installer_path = self.download_latest_driver_installer()
 
         logger.info("Starting uninstallation...")
         self.run(f"sh {installer_path} -s --uninstall", check=True)
@@ -184,9 +175,6 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         This is the method to install the CUDA Toolkit. It will install the toolkit and execute post-installation
         configuration in the operating system, to make it available for all users.
         """
-        if self.device_code == K80_DEVICE_CODE:
-            logger.info("CUDA installation is not supported for K80 GPUs.")
-            return
         if not self.verify_driver():
             logger.info(
                 "CUDA installation requires GPU driver to be installed first. "
@@ -441,10 +429,6 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
     def download_cuda_toolkit_installer(self) -> pathlib.Path:
         logger.info("Downloading CUDA installation kit...")
         return self.download_file(CUDA_TOOLKIT_URL, CUDA_TOOLKIT_SHA256_SUM)
-
-    def download_k80_driver_installer(self) -> pathlib.Path:
-        logger.info("K80 GPU detected, downloading only the driver installer...")
-        return self.download_file(K80_DRIVER_URL, K80_DRIVER_SHA256_SUM)
 
     def download_latest_driver_installer(self) -> pathlib.Path:
         logger.info(f"Downloading latest driver installer ({LATEST_DRIVER_VERSION})...")

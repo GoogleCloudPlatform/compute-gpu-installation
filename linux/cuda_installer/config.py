@@ -20,14 +20,6 @@ try:
 except PermissionError:
     pass
 
-
-K80_DRIVER_VERSION = "470.239.06"
-K80_DEVICE_CODE = "10de:102d"
-K80_DRIVER_URL = f"https://us.download.nvidia.com/tesla/{K80_DRIVER_VERSION}/NVIDIA-Linux-x86_64-{K80_DRIVER_VERSION}.run"
-K80_DRIVER_SHA256_SUM = (
-    "7d74caac140a0432d79ebe8e4330dc796f39ba7dd40b3fcd61df760181bf9ccc"
-)
-
 LATEST_DRIVER_VERSION = "560.35.03"
 LATEST_DRIVER_URL = f"https://us.download.nvidia.com/tesla/{LATEST_DRIVER_VERSION}/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
 LATEST_DRIVER_SHA256_SUM = (
