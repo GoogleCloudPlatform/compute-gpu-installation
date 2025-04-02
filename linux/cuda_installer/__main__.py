@@ -15,14 +15,13 @@
 
 import argparse
 import os
+import pathlib
 import sys
 
 import config
 from logger import logger
-
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import get_installer, debian, ubuntu, rhel, rocky
-
 
 # Mentioning the packages from import above, so automatic import cleanups don't remove them
 del debian
@@ -35,16 +34,57 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Manage GPU drivers and CUDA toolkit installation."
     )
-    parser.add_argument(
-        "command",
-        choices=[
-            "install_driver",
-            "install_cuda",
-            "verify_driver",
-            "verify_cuda",
-            "uninstall_driver",
-        ],
-        help="Install GPU driver or CUDA Toolkit.",
+    subparsers = parser.add_subparsers(
+        dest="command", help="Install GPU driver or CUDA Toolkit."
+    )
+
+    # Subparser for install_driver
+    install_driver_parser = subparsers.add_parser(
+        "install_driver", help="Install GPU driver."
+    )
+    install_driver_parser.add_argument(
+        "--secure-boot-pub-key",
+        help="Path to the secure boot public key file.",
+        required=False,
+        type=pathlib.Path
+    )
+    install_driver_parser.add_argument(
+        "--secure-boot-priv-key",
+        help="Path to the secure boot private key file.",
+        required=False,
+        type=pathlib.Path
+    )
+    install_driver_parser.add_argument(
+        "--ignore-no-gpu",
+        action="store_true",
+        help="Ignore the absence of a GPU.",
+        required=False
+    )
+
+    # Subparser for verify_driver
+    verify_driver_parser = subparsers.add_parser(
+        "verify_driver", help="Verify GPU driver installation."
+    )
+
+    # Subparser for uninstall_driver
+    uninstall_driver_parser = subparsers.add_parser(
+        "uninstall_driver", help="Uninstall GPU driver."
+    )
+
+    # Subparser for install_cuda
+    install_cuda_parser = subparsers.add_parser(
+        "install_cuda", help="Install CUDA Toolkit."
+    )
+    install_cuda_parser.add_argument(
+        "--ignore-no-gpu",
+        action="store_true",
+        help="Ignore the absence of a GPU.",
+        required=False
+    )
+
+    # Subparser for verify_cuda
+    verify_cuda_parser = subparsers.add_parser(
+        "verify_cuda", help="Verify CUDA Toolkit installation."
     )
 
     return parser.parse_args()
@@ -55,12 +95,18 @@ if __name__ == "__main__":
         print("This script needs to be run with root privileges!")
         sys.exit(1)
     args = parse_args()
+    secure_boot_public_key = args.secure_boot_pub_key.absolute() if 'secure_boot_pub_key' in args else None
+    secure_boot_private_key = args.secure_boot_priv_key.absolute() if 'secure_boot_priv_key' in args else None
     logger.info(f"Switching to working directory: {config.INSTALLER_DIR}")
     os.chdir(config.INSTALLER_DIR)
     installer = get_installer()
 
     if args.command == "install_driver":
-        installer.install_driver()
+        installer.install_driver(
+            secure_boot_public_key=secure_boot_public_key,
+            secure_boot_private_key=secure_boot_private_key,
+            ignore_no_gpu=args.ignore_no_gpu,
+        )
     elif args.command == "verify_driver":
         if installer.verify_driver(verbose=True):
             sys.exit(0)
@@ -69,7 +115,7 @@ if __name__ == "__main__":
     elif args.command == "uninstall_driver":
         installer.uninstall_driver()
     elif args.command == "install_cuda":
-        installer.install_cuda()
+        installer.install_cuda(ignore_no_gpu=args.ignore_no_gpu,)
     elif args.command == "verify_cuda":
         if installer.verify_cuda():
             sys.exit(0)

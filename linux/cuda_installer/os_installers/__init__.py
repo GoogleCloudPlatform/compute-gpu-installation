@@ -102,7 +102,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         """
         pass
 
-    def install_driver(self):
+    def install_driver(self,
+                       secure_boot_public_key: Optional[pathlib.Path]=None,
+                       secure_boot_private_key: Optional[pathlib.Path]=None,
+                       ignore_no_gpu: bool=False):
         """
         Downloads the installation package and installs the driver. It also handles installation of
         drive prerequisites and will trigger a reboot on first run, when those prerequisites are installed.
@@ -125,9 +128,13 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             self.reboot()
 
         logger.info("Installing GPU drivers for your device...")
-        self.run(f"sh {installer_path} -s", check=True)
+        if secure_boot_public_key and secure_boot_private_key and secure_boot_private_key.is_file() and secure_boot_public_key.is_file():
+            logger.info(f"Using secure boot keys from {secure_boot_public_key.absolute()} and {secure_boot_private_key.absolute()}")
+            self.run(f"sh {installer_path} -s --module-signing-secret-key={secure_boot_private_key.absolute()} --module-signing-public-key={secure_boot_public_key.absolute()}", check=True)
+        else:
+            self.run(f"sh {installer_path} -s", check=True)
 
-        if self.verify_driver():
+        if self.verify_driver() or ignore_no_gpu:
             self.lock_kernel_updates()
             logger.info("GPU driver installation completed!")
         else:
@@ -170,12 +177,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
     @checkpoint_decorator(
         "cuda_installation", "CUDA toolkit already marked as installed."
     )
-    def _install_cuda(self):
+    def _install_cuda(self, ignore_no_gpu: bool = False):
         """
         This is the method to install the CUDA Toolkit. It will install the toolkit and execute post-installation
         configuration in the operating system, to make it available for all users.
         """
-        if not self.verify_driver():
+        if not (self.verify_driver() or ignore_no_gpu):
             logger.info(
                 "CUDA installation requires GPU driver to be installed first. "
                 "Attempting to install GPU driver now."
@@ -192,9 +199,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         logger.info("CUDA post-installation actions completed!")
         raise RebootRequired
 
-    def install_cuda(self):
+    def install_cuda(self, ignore_no_gpu: bool = False):
         try:
-            self._install_cuda()
+            self._install_cuda(ignore_no_gpu)
         except RebootRequired:
             self.reboot()
 
@@ -244,7 +251,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             with chdir(temp_dir):
                 self.run("tar -xf installer.tar.bz2", silent=True)
                 logger.info("Executing nvidia-persistenced installer...")
-                self.run("sh nvidia-persistenced-init/install.sh", check=True)
+                self.run("sh nvidia-persistenced-init/install.sh", check=self.check_gpu_present())
 
     def verify_cuda(self) -> bool:
         """
