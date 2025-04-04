@@ -8,6 +8,6 @@ manually on local developer machine. Required steps:
 2. (optional) Use `gcloud config set project $PROJECT` to
    specify a project you want to use for testing.
 3. Install required Python packages `pip install -Ur requirements.txt`
-4. Run test using `pytest` command. You can speed up the 
-   process by using parallel execution with 
+4. Run test using `pytest` command in the `/linux` directory. You can 
+   speed up the process by using parallel execution with 
    `pytest -n auto`. 
