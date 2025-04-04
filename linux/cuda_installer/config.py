@@ -20,18 +20,22 @@ try:
 except PermissionError:
     pass
 
-LATEST_DRIVER_VERSION = "560.35.03"
-LATEST_DRIVER_URL = f"https://us.download.nvidia.com/tesla/{LATEST_DRIVER_VERSION}/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
+LATEST_DRIVER_VERSION = "570.124.06"
+LATEST_DRIVER_URL = f"https://storage.googleapis.com/compute-gpu-installation-us/drivers/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
+LATEST_DRIVER_GS_URI = f"gs://compute-gpu-installation-us/drivers/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
 LATEST_DRIVER_SHA256_SUM = (
-    "f2932c92fadd43c5b2341be453fc4f73f0ad7185c26bb7a43fbde81ae29f1fe3"
+    "1818c90657d17e510de9fa032385ff7e99063e848e901cb4636ee71c8b339313"
 )
 
-CUDA_TOOLKIT_URL = "https://developer.download.nvidia.com/compute/cuda/12.6.3/local_installers/cuda_12.6.3_560.35.05_linux.run"
+CUDA_TOOLKIT_VERSION = "12.8.1"
+CUDA_TOOLKIT_VERSION_SHORT = "12.8"
+CUDA_TOOLKIT_URL = f"https://storage.googleapis.com/compute-gpu-installation-us/cuda_toolkits/cuda_{CUDA_TOOLKIT_VERSION}_{LATEST_DRIVER_VERSION}_linux.run"
+CUDA_TOOLKIT_GS_URI = f"gs://compute-gpu-installation-us/cuda_toolkits/cuda_{CUDA_TOOLKIT_VERSION}_{LATEST_DRIVER_VERSION}_linux.run"
 CUDA_TOOLKIT_SHA256_SUM = (
-    "81d60e48044796d7883aa8a049afe6501b843f2c45639b3703b2378de30d55d3"
+    "228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797"
 )
 
-CUDA_SAMPLES_TARGZ = (
+CUDA_SAMPLES_URL = (
     "https://github.com/NVIDIA/cuda-samples/archive/refs/tags/v12.4.1.tar.gz"
 )
 CUDA_SAMPLES_SHA256_SUM = (
@@ -39,8 +43,8 @@ CUDA_SAMPLES_SHA256_SUM = (
 )
 
 CUDA_PROFILE_FILENAME = pathlib.Path("/etc/profile.d/google_cuda_install.sh")
-CUDA_BIN_FOLDER = "/usr/local/cuda-12.6/bin"
-CUDA_LIB_FOLDER = "/usr/local/cuda-12.6/lib64"
+CUDA_BIN_FOLDER = f"/usr/local/cuda-{CUDA_TOOLKIT_VERSION_SHORT}/bin"
+CUDA_LIB_FOLDER = f"/usr/local/cuda-{CUDA_TOOLKIT_VERSION_SHORT}/lib64"
 
 NVIDIA_PERSISTANCED_INSTALLER = (
     "/usr/share/doc/NVIDIA_GLX-1.0/samples/nvidia-persistenced-init.tar.bz2"

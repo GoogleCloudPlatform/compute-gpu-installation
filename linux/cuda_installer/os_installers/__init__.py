@@ -28,15 +28,18 @@ from typing import Optional, Union
 
 from config import (
     CUDA_TOOLKIT_URL,
+    CUDA_TOOLKIT_GS_URI,
     CUDA_TOOLKIT_SHA256_SUM,
+    CUDA_TOOLKIT_VERSION,
     LATEST_DRIVER_VERSION,
     LATEST_DRIVER_URL,
+    LATEST_DRIVER_GS_URI,
     LATEST_DRIVER_SHA256_SUM,
     CUDA_PROFILE_FILENAME,
     CUDA_BIN_FOLDER,
     CUDA_LIB_FOLDER,
     NVIDIA_PERSISTANCED_INSTALLER,
-    CUDA_SAMPLES_TARGZ,
+    CUDA_SAMPLES_URL,
     CUDA_SAMPLES_SHA256_SUM,
 )
 from decorators import checkpoint_decorator
@@ -265,7 +268,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                     f"Using {temp_dir} to download, build and execute code samples."
                 )
                 samples_tar = self.download_file(
-                    CUDA_SAMPLES_TARGZ, CUDA_SAMPLES_SHA256_SUM
+                    CUDA_SAMPLES_URL, CUDA_SAMPLES_SHA256_SUM
                 )
                 self.run(f"tar -xf {samples_tar.name}")
                 with chdir(
@@ -434,17 +437,19 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             return None
 
     def download_cuda_toolkit_installer(self) -> pathlib.Path:
-        logger.info("Downloading CUDA installation kit...")
-        return self.download_file(CUDA_TOOLKIT_URL, CUDA_TOOLKIT_SHA256_SUM)
+        logger.info(f"Downloading CUDA installation kit ({CUDA_TOOLKIT_VERSION})...")
+        return self.download_file(CUDA_TOOLKIT_URL, CUDA_TOOLKIT_SHA256_SUM, CUDA_TOOLKIT_GS_URI)
 
     def download_latest_driver_installer(self) -> pathlib.Path:
         logger.info(f"Downloading latest driver installer ({LATEST_DRIVER_VERSION})...")
-        return self.download_file(LATEST_DRIVER_URL, LATEST_DRIVER_SHA256_SUM)
+        return self.download_file(LATEST_DRIVER_URL, LATEST_DRIVER_SHA256_SUM, LATEST_DRIVER_GS_URI)
 
-    def download_file(self, url: str, sha256sum: str) -> pathlib.Path:
+    def download_file(self, url: str, sha256sum: str, gs_uri: str=None) -> pathlib.Path:
         """
         Uses `curl` to download a file pointed by url. It will also execute `sha256sum` on the downloaded file
         to verify if it's matching with the expected hash.
+
+        If provided uses `gs_uri` together with `gsutil` to download the file.
 
         It also keeps track of files already downloaded and checked, so that it doesn't waste time with repeating the
         download or check.
@@ -455,8 +460,13 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if file_path.exists() and url in self._file_download_verified:
             return file_path
 
+        gsutil_available = self.run("which gsutil", check=False, silent=True).returncode == 0
+
         if not file_path.exists():
-            self.run(f"curl -fSsL -O {url}")
+            if gsutil_available and gs_uri:
+                self.run(f"gsutil cp {gs_uri} .", silent=True)
+            else:
+                self.run(f"curl -fSsL -O {url}")
 
         checksum = self.run(f"sha256sum {file_path}").stdout.strip().split()[0]
         if checksum != sha256sum:
