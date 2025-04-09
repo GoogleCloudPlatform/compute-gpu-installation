@@ -316,11 +316,11 @@ def test_install_driver_for_system(
         _test_body(zone, instance_name, gpu, ssh_key)
     finally:
         try:
-            print("This is where I'd delete the instance, but we keep it for debugging.")
-            # operation = instance_client.delete_unary(
-            #     project=PROJECT, zone=zone, instance=instance_name
-            # )
-            # operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+            # print("This is where I'd delete the instance, but we keep it for debugging.")
+            operation = instance_client.delete_unary(
+                project=PROJECT, zone=zone, instance=instance_name
+            )
+            operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
         except google.api_core.exceptions.NotFound:
             # The instance was not properly created at all.
             pass
