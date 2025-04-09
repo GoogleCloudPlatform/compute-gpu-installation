@@ -28,7 +28,7 @@ class UbuntuInstaller(LinuxInstaller):
 
         self.run(
             "apt-get install -y linux-image-gcp linux-headers-gcp "
-            "gcc make dkms pciutils software-properties-common"
+            "gcc make dkms pciutils software-properties-common cmake"
         )
         raise RebootRequired
 

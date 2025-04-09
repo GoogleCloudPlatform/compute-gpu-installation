@@ -35,12 +35,14 @@ CUDA_TOOLKIT_SHA256_SUM = (
     "228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797"
 )
 
+CUDA_SAMPLES_VERSION = "12.8"
 CUDA_SAMPLES_URL = (
-    "https://github.com/NVIDIA/cuda-samples/archive/refs/tags/v12.4.1.tar.gz"
+    f"https://storage.googleapis.com/compute-gpu-installation-us/cuda_samples/v{CUDA_SAMPLES_VERSION}.tar.gz"
 )
 CUDA_SAMPLES_SHA256_SUM = (
-    "01bb311cc8f802a0d243700e4abe6a2d402132c9d97ecf2c64f3fbb1006c304c"
+    "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d"
 )
+CUDA_SAMPLES_GS_URI = f"gs://compute-gpu-installation-us/cuda_samples/v{CUDA_SAMPLES_VERSION}.tar.gz"
 
 CUDA_PROFILE_FILENAME = pathlib.Path("/etc/profile.d/google_cuda_install.sh")
 CUDA_BIN_FOLDER = f"/usr/local/cuda-{CUDA_TOOLKIT_VERSION_SHORT}/bin"

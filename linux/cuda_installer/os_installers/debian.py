@@ -53,7 +53,7 @@ class DebianInstaller(LinuxInstaller):
 
         self.run(
             f"apt-get install -y make gcc {wanted_kernel_package} {wanted_kernel_headers} "
-            f"software-properties-common pciutils gcc make dkms"
+            f"software-properties-common pciutils gcc make dkms cmake"
         )
         raise RebootRequired
 

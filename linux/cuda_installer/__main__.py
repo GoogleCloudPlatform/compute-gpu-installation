@@ -89,11 +89,12 @@ def parse_args():
 
     return parser.parse_args()
 
-
-if __name__ == "__main__":
+def assert_root():
     if os.geteuid() != 0:
         print("This script needs to be run with root privileges!")
         sys.exit(1)
+
+if __name__ == "__main__":
     args = parse_args()
     secure_boot_public_key = args.secure_boot_pub_key.absolute() if 'secure_boot_pub_key' in args else None
     secure_boot_private_key = args.secure_boot_priv_key.absolute() if 'secure_boot_priv_key' in args else None
@@ -102,6 +103,7 @@ if __name__ == "__main__":
     installer = get_installer()
 
     if args.command == "install_driver":
+        assert_root()
         installer.install_driver(
             secure_boot_public_key=secure_boot_public_key,
             secure_boot_private_key=secure_boot_private_key,
@@ -113,8 +115,10 @@ if __name__ == "__main__":
         else:
             sys.exit(1)
     elif args.command == "uninstall_driver":
+        assert_root()
         installer.uninstall_driver()
     elif args.command == "install_cuda":
+        assert_root()
         installer.install_cuda(ignore_no_gpu=args.ignore_no_gpu,)
     elif args.command == "verify_cuda":
         if installer.verify_cuda():

@@ -12,15 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
+import pathlib
 import logging.handlers
+import os
 import sys
 
 from config import INSTALLER_DIR
 
-
 logger = logging.getLogger("GoogleCUDAInstaller")
-_file_handler = logging.FileHandler(INSTALLER_DIR / "installer.log", mode="a")
+installer_log_file = pathlib.Path(INSTALLER_DIR / "installer.log")
+_file_handler = logging.FileHandler(installer_log_file, mode="a")
+
+# Without this, the installer can't be used by regular users to verify CUDA installation.
+if os.geteuid() == 0:
+    # Only root can change the log file permissions
+    installer_log_file.touch(exist_ok=True)
+    installer_log_file.chmod(0o666)
+
 _file_handler.level = logging.DEBUG
 logger.addHandler(_file_handler)
 _sys_handler = logging.handlers.SysLogHandler(

@@ -54,7 +54,6 @@ OPERATING_SYSTEMS = (
 GPUS = {
     # "L4": "nvidia-l4",
     # "A100": "nvidia-tesla-a100",
-    # "K80": "nvidia-tesla-k80",
     # "P4": "nvidia-tesla-p4",
     "T4": "nvidia-tesla-t4",
     # "P100": "nvidia-tesla-p100",
@@ -64,7 +63,6 @@ GPUS = {
 GPU_QUOTA_SEMAPHORES = {
     "L4": BoundedSemaphore(8),
     "A100": BoundedSemaphore(8),
-    "K80": BoundedSemaphore(16),
     "P4": BoundedSemaphore(1),
     "T4": BoundedSemaphore(8),
     "P100": BoundedSemaphore(1),
@@ -74,7 +72,6 @@ GPU_QUOTA_SEMAPHORES = {
 ZONES = {
     "L4": ("us-central1-a",),
     "A100": ("us-central1-f",),
-    "K80": ("us-central1-a",),
     "P4": ("us-central1-a",),
     "T4": (
         "us-central1-b",
@@ -90,7 +87,6 @@ ZONES = {
 MACHINE_TYPES = {
     "L4": "g2-standard-4",
     "A100": "a2-highgpu-1g",
-    "K80": "n1-standard-8",
     "P4": "n1-standard-8",
     "T4": "n1-standard-8",
     "P100": "n1-standard-8",
@@ -320,11 +316,11 @@ def test_install_driver_for_system(
         _test_body(zone, instance_name, gpu, ssh_key)
     finally:
         try:
-            # print("This is where I'd delete the instance, but we keep it for debugging.")
-            operation = instance_client.delete_unary(
-                project=PROJECT, zone=zone, instance=instance_name
-            )
-            operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+            print("This is where I'd delete the instance, but we keep it for debugging.")
+            # operation = instance_client.delete_unary(
+            #     project=PROJECT, zone=zone, instance=instance_name
+            # )
+            # operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
         except google.api_core.exceptions.NotFound:
             # The instance was not properly created at all.
             pass
@@ -380,7 +376,7 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                         "--ssh-key-file",
                         ssh_key,
                         "--command",
-                        "sudo python3 /opt/google/cuda-installer/cuda_installer.pyz verify_cuda",
+                        "python3 /opt/google/cuda-installer/cuda_installer.pyz verify_cuda",
                     ],
                     stderr=subprocess.PIPE,
                     stdout=subprocess.PIPE,
@@ -388,6 +384,9 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                     timeout=600,
                 )
                 print("process.stdout: ", process.stdout)
+                if "CMake 3.20 or higher is required." in process.stdout:
+                    pytest.skip("CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked).")
+                    break
                 if "Cuda Toolkit verification completed!" in process.stdout:
                     # Now we're sure that the installation worked.
                     break

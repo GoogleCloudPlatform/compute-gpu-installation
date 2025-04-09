@@ -14,6 +14,7 @@
 
 import abc
 import configparser
+import pathlib
 import shutil
 
 from logger import logger
@@ -24,6 +25,7 @@ class DNFSystemInstaller(LinuxInstaller, metaclass=abc.ABCMeta):
     """
     An abstract class providing implementation of DNF kernel locking methods.
     """
+    BASHRC_PATH = pathlib.Path('/etc/bashrc')
 
     def lock_kernel_updates(self):
         """Make sure no kernel updates are installed."""

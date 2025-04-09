@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 
 from decorators import checkpoint_decorator
 from os_installers import RebootRequired
@@ -20,12 +21,13 @@ from os_installers.dnf_system import DNFSystemInstaller
 class RHELInstaller(DNFSystemInstaller):
 
     def __init__(self):
-        self.run("dnf install -y pciutils")
+        if os.getuid() == 0:
+            self.run("dnf install -y pciutils")
         DNFSystemInstaller.__init__(self)
 
     @checkpoint_decorator("prerequisites", "System preparations already done.")
     def _install_prerequisites(self):
         self.run(
-            "dnf --refresh install -y kernel kernel-devel kernel-headers gcc gcc-c++ make bzip2"
+            "dnf --refresh install -y kernel kernel-devel kernel-headers gcc gcc-c++ make bzip2 cmake"
         )
         raise RebootRequired

@@ -40,7 +40,7 @@ from config import (
     CUDA_LIB_FOLDER,
     NVIDIA_PERSISTANCED_INSTALLER,
     CUDA_SAMPLES_URL,
-    CUDA_SAMPLES_SHA256_SUM,
+    CUDA_SAMPLES_SHA256_SUM, CUDA_SAMPLES_GS_URI, CUDA_SAMPLES_VERSION,
 )
 from decorators import checkpoint_decorator
 from logger import logger
@@ -75,9 +75,10 @@ def chdir(path: Union[pathlib.Path, str]):
 
 class LinuxInstaller(metaclass=abc.ABCMeta):
     """
-    Handles the installation process for both driver and CUDA toolkit. Needs to have couple of methods implemented
+    Handles the installation process for both driver and CUDA toolkit. Needs to have a couple of methods implemented
     in child classes, but contains most of the required logic.
     """
+    BASHRC_PATH = pathlib.Path('/etc/bash.bashrc')
 
     def __init__(self):
         self.kernel_version = self.run("uname -r", silent=True).stdout
@@ -226,6 +227,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             os.environ["LD_LIBRARY_PATH"] = CUDA_LIB_FOLDER
 
         with CUDA_PROFILE_FILENAME.open("w") as profile:
+            logger.info(f"Creating {CUDA_PROFILE_FILENAME} file...")
             profile.write(
                 "# Configuring CUDA toolkit. File created by Google CUDA installation manager.\n"
             )
@@ -235,6 +237,14 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 + CUDA_LIB_FOLDER
                 + "${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}\n"
             )
+
+        with open(self.BASHRC_PATH, mode='r+') as global_bashrc:
+            logger.info(f"Updating {self.BASHRC_PATH} to source {CUDA_PROFILE_FILENAME}...")
+            content = global_bashrc.read()
+            global_bashrc.seek(0)
+            global_bashrc.write("\n# Enabling NVIDIA CUDA Toolkit\n")
+            global_bashrc.write(f"source {CUDA_PROFILE_FILENAME}\n")
+            global_bashrc.write(content)
 
         self.configure_persistanced_service()
 
@@ -268,11 +278,13 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                     f"Using {temp_dir} to download, build and execute code samples."
                 )
                 samples_tar = self.download_file(
-                    CUDA_SAMPLES_URL, CUDA_SAMPLES_SHA256_SUM
+                    CUDA_SAMPLES_URL, CUDA_SAMPLES_SHA256_SUM, CUDA_SAMPLES_GS_URI
                 )
                 self.run(f"tar -xf {samples_tar.name}")
+                with chdir(temp_dir / f"cuda-samples-{CUDA_SAMPLES_VERSION}"):
+                    self.run("cmake .", check=True)
                 with chdir(
-                    temp_dir / "cuda-samples-12.4.1/Samples/1_Utilities/deviceQuery"
+                    temp_dir / f"cuda-samples-{CUDA_SAMPLES_VERSION}/Samples/1_Utilities/deviceQuery"
                 ):
                     self.run("make", check=True)
                     dev_query = self.run("./deviceQuery", check=True)
@@ -282,7 +294,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                         )
                         return False
                 with chdir(
-                    temp_dir / "cuda-samples-12.4.1/Samples/1_Utilities/bandwidthTest"
+                    temp_dir / f"cuda-samples-{CUDA_SAMPLES_VERSION}/Samples/1_Utilities/bandwidthTest"
                 ):
                     self.run("make", check=True)
                     bandwidth = self.run("./bandwidthTest", check=True)
