@@ -17,8 +17,10 @@ import configparser
 import pathlib
 import shutil
 
+from config import NVIDIA_RHEL_REPO_URL, CUDA_TOOLKIT_VERSION_SHORT
+from decorators import checkpoint_decorator
 from logger import logger
-from os_installers import LinuxInstaller
+from os_installers import LinuxInstaller, System
 
 
 class DNFSystemInstaller(LinuxInstaller, metaclass=abc.ABCMeta):
@@ -26,6 +28,26 @@ class DNFSystemInstaller(LinuxInstaller, metaclass=abc.ABCMeta):
     An abstract class providing implementation of DNF kernel locking methods.
     """
     BASHRC_PATH = pathlib.Path('/etc/bashrc')
+
+    @checkpoint_decorator("add_nvidia_repo", "NVIDIA repository already added.")
+    def _add_nvidia_repo(self):
+        """
+        Add the Nvidia repository to the system. Do nothing if already done.
+        """
+        system, version = self._detect_linux_distro()
+        assert system in (System.RHEL, System.Rocky)
+        version = version.split('.')[0]
+        repo_url = NVIDIA_RHEL_REPO_URL.format(version=version)
+        self.run(f"dnf config-manager --add-repo {repo_url}")
+        self.run("dnf clean all")
+
+    def _install_cuda_repo(self):
+        """
+        Install CUDA Toolkit using DNF.
+        """
+        self._add_nvidia_repo()
+        major, minor = CUDA_TOOLKIT_VERSION_SHORT.split('.')
+        self.run(f"dnf install -y cuda-toolkit-{major}-{minor}")
 
     def lock_kernel_updates(self):
         """Make sure no kernel updates are installed."""

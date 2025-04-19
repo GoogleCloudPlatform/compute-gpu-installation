@@ -35,6 +35,27 @@ CUDA_TOOLKIT_SHA256_SUM = (
     "228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797"
 )
 
+# Repo install settings
+
+## RHEL and Rocky settings, needs to have .format(version=) applied for good URL
+NVIDIA_RHEL_REPO_URL = "https://developer.download.nvidia.com/compute/cuda/repos/rhel{version}/x86_64/cuda-rhel{version}.repo"
+
+## DEB repos, needs to have .format(system=, version=) applied for good URL
+NVIDIA_DEB_REPO_KEYRING_URL = "https://developer.download.nvidia.com/compute/cuda/repos/{system}{version}/x86_64/cuda-keyring_1.1-1_all.deb"
+NVIDIA_DEB_REPO_KEYRING_GS_URI = "gs://compute-gpu-installation-us/repos/{system}{version}/x86_64/cuda-keyring_1.1-1_all.deb"
+NVIDIA_KEYRING_SHA256_SUMS = {
+    'ubuntu': {
+        '2004': 'cf5ca9853118b9fb2b78dd2708786e1eb5ab14e39d8738539281429428eb4efe',
+        '2204': 'd93190d50b98ad4699ff40f4f7af50f16a76dac3bb8da1eaaf366d47898ff8df',
+        '2404': 'd2a6b11c096396d868758b86dab1823b25e14d70333f1dfa74da5ddaf6a06dba',
+    },
+    'debian': {
+        '11': 'dfc6e5cdbfc9b4cd1ca8bf6b6eda5d8582ca50d51b7e64ba049b935d52325d58',
+        '12': 'e7f219eab6fe4819cdb5c15b98233dc3420302d9c00883219cd3d896857cf48d',
+    }
+
+}
+
 CUDA_SAMPLES_VERSION = "12.8"
 CUDA_SAMPLES_URL = (
     f"https://storage.googleapis.com/compute-gpu-installation-us/cuda_samples/v{CUDA_SAMPLES_VERSION}.tar.gz"

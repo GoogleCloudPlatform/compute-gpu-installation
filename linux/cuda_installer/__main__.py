@@ -21,7 +21,7 @@ import sys
 import config
 from logger import logger
 # Need to import all the subpackages here, or the program fails for Python 3.6
-from os_installers import get_installer, debian, ubuntu, rhel, rocky
+from os_installers import LinuxInstaller, debian, ubuntu, rhel, rocky
 
 # Mentioning the packages from import above, so automatic import cleanups don't remove them
 del debian
@@ -61,6 +61,14 @@ def parse_args():
         required=False
     )
 
+    install_driver_parser.add_argument(
+        "--installation-mode",
+        help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'.",
+        required=False,
+        default='repo'
+    )
+
+
     # Subparser for verify_driver
     verify_driver_parser = subparsers.add_parser(
         "verify_driver", help="Verify GPU driver installation."
@@ -81,6 +89,12 @@ def parse_args():
         help="Ignore the absence of a GPU.",
         required=False
     )
+    install_cuda_parser.add_argument(
+        "--installation-mode",
+        help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'. You have to use the same mode you used when installing the driver.",
+        required=False,
+        default='repo'
+    )
 
     # Subparser for verify_cuda
     verify_cuda_parser = subparsers.add_parser(
@@ -96,11 +110,11 @@ def assert_root():
 
 if __name__ == "__main__":
     args = parse_args()
-    secure_boot_public_key = args.secure_boot_pub_key.absolute() if 'secure_boot_pub_key' in args else None
-    secure_boot_private_key = args.secure_boot_priv_key.absolute() if 'secure_boot_priv_key' in args else None
+    secure_boot_public_key = args.secure_boot_pub_key.absolute() if getattr(args, 'secure_boot_pub_key', False) else None
+    secure_boot_private_key = args.secure_boot_priv_key.absolute() if getattr(args, 'secure_boot_priv_key', False) else None
     logger.info(f"Switching to working directory: {config.INSTALLER_DIR}")
     os.chdir(config.INSTALLER_DIR)
-    installer = get_installer()
+    installer = LinuxInstaller.get_installer()
 
     if args.command == "install_driver":
         assert_root()
@@ -108,6 +122,7 @@ if __name__ == "__main__":
             secure_boot_public_key=secure_boot_public_key,
             secure_boot_private_key=secure_boot_private_key,
             ignore_no_gpu=args.ignore_no_gpu,
+            installation_mode=args.installation_mode,
         )
     elif args.command == "verify_driver":
         if installer.verify_driver(verbose=True):
@@ -119,7 +134,7 @@ if __name__ == "__main__":
         installer.uninstall_driver()
     elif args.command == "install_cuda":
         assert_root()
-        installer.install_cuda(ignore_no_gpu=args.ignore_no_gpu,)
+        installer.install_cuda(ignore_no_gpu=args.ignore_no_gpu, installation_mode=args.installation_mode,)
     elif args.command == "verify_cuda":
         if installer.verify_cuda():
             sys.exit(0)
