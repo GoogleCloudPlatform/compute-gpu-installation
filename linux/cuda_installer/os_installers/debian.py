@@ -112,8 +112,10 @@ class DebianInstaller(LinuxInstaller):
                        secure_boot_private_key: Optional[pathlib.Path]=None):
         system, version = self._detect_linux_distro()
         assert system == System.Debian
+
         if version == '11':
             raise RuntimeError("The 'repo' mode is not available for Debian 11.")
+
         if secure_boot_public_key and secure_boot_private_key:
             if secure_boot_public_key.exists() and secure_boot_private_key.exists():
                 self.place_custom_dkms_signing_keys(
@@ -132,4 +134,5 @@ class DebianInstaller(LinuxInstaller):
         """
         self._add_nvidia_repo()
         major, minor = CUDA_TOOLKIT_VERSION_SHORT.split('.')
+        logger.info(f"Installing CUDA Toolkit version {CUDA_TOOLKIT_VERSION_SHORT}")
         self.run(f"apt-get install -yq cuda-toolkit-{major}-{minor}")

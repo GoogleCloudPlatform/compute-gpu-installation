@@ -24,7 +24,7 @@ import tempfile
 import urllib.parse
 from contextlib import contextmanager
 from enum import Enum, auto
-from typing import Optional, Union, Literal
+from typing import Optional, Union
 
 from config import (
     CUDA_TOOLKIT_URL,
@@ -153,7 +153,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                        secure_boot_public_key: Optional[pathlib.Path]=None,
                        secure_boot_private_key: Optional[pathlib.Path]=None,
                        ignore_no_gpu: bool=False,
-                       installation_mode: Literal['repo', 'binary']='repo'):
+                       installation_mode: str='repo'):
         """
         Downloads the installation package and installs the driver. It also handles installation of
         drive prerequisites and will trigger a reboot on first run, when those prerequisites are installed.
@@ -178,6 +178,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if installation_mode == 'binary':
             self._binary_install_driver(secure_boot_public_key, secure_boot_private_key, ignore_no_gpu)
         else:
+            self._add_nvidia_repo()
             self._repo_install_driver(secure_boot_public_key, secure_boot_private_key)
 
 
@@ -244,7 +245,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
     @checkpoint_decorator(
         "cuda_installation", "CUDA toolkit already marked as installed."
     )
-    def _install_cuda(self, ignore_no_gpu: bool = False, installation_mode: Literal['repo', 'binary']= 'repo'):
+    def _install_cuda(self, ignore_no_gpu: bool = False, installation_mode: str = 'repo'):
         """
         This is the method to install the CUDA Toolkit. It will install the toolkit and execute post-installation
         configuration in the operating system, to make it available for all users.
@@ -261,6 +262,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if installation_mode == 'binary':
             self._install_cuda_binary()
         else:
+            self._add_nvidia_repo()
             self._install_cuda_repo()
 
         logger.info("Executing post-installation actions...")
@@ -280,7 +282,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
     def _install_cuda_repo(self):
         pass
 
-    def install_cuda(self, ignore_no_gpu: bool = False, installation_mode: Literal['repo', 'binary']='repo'):
+    def install_cuda(self, ignore_no_gpu: bool = False, installation_mode: str='repo'):
         try:
             self._install_cuda(ignore_no_gpu, installation_mode)
         except RebootRequired:

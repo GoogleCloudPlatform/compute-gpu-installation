@@ -88,7 +88,7 @@ MACHINE_TYPES = {
     "L4": "g2-standard-4",
     "A100": "a2-highgpu-1g",
     "P4": "n1-standard-8",
-    "T4": "n1-standard-8",
+    "T4": "n1-standard-16",
     "P100": "n1-standard-8",
     "V100": "n1-standard-8",
 }
@@ -193,8 +193,8 @@ def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk
     boot_disk = compute_v1.AttachedDisk()
     initialize_params = compute_v1.AttachedDiskInitializeParams()
     initialize_params.source_image = source_image_link
-    initialize_params.disk_size_gb = 100
-    initialize_params.disk_type = f"zones/{zone}/diskTypes/pd-standard"
+    initialize_params.disk_size_gb = 200
+    initialize_params.disk_type = f"zones/{zone}/diskTypes/pd-ssd"
     boot_disk.initialize_params = initialize_params
     # Remember to set auto_delete to True if you want the disk to be deleted when you delete
     # your VM instance.
