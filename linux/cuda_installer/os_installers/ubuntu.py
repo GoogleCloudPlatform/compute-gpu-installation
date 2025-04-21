@@ -14,8 +14,12 @@
 import pathlib
 from typing import Optional
 
-from config import NVIDIA_DEB_REPO_KEYRING_URL, NVIDIA_KEYRING_SHA256_SUMS, NVIDIA_DEB_REPO_KEYRING_GS_URI, \
-    CUDA_TOOLKIT_VERSION_SHORT
+from config import (
+    NVIDIA_DEB_REPO_KEYRING_URL,
+    NVIDIA_KEYRING_SHA256_SUMS,
+    NVIDIA_DEB_REPO_KEYRING_GS_URI,
+    CUDA_TOOLKIT_VERSION_SHORT,
+)
 from decorators import checkpoint_decorator
 from logger import logger
 from os_installers import LinuxInstaller, RebootRequired, System
@@ -23,8 +27,8 @@ from os_installers import LinuxInstaller, RebootRequired, System
 
 class UbuntuInstaller(LinuxInstaller):
 
-    DKMS_MOK_PUB = pathlib.Path('/var/lib/shim-signed/mok/MOK.der')
-    DKMS_MOK_KEY = pathlib.Path('/var/lib/shim-signed/mok/MOK.priv')
+    DKMS_MOK_PUB = pathlib.Path("/var/lib/shim-signed/mok/MOK.der")
+    DKMS_MOK_KEY = pathlib.Path("/var/lib/shim-signed/mok/MOK.priv")
 
     @checkpoint_decorator("add_nvidia_repo", "NVIDIA repository already added.")
     def _add_nvidia_repo(self):
@@ -34,7 +38,7 @@ class UbuntuInstaller(LinuxInstaller):
         system, version = self._detect_linux_distro()
         assert system == System.Ubuntu
         system = "ubuntu"
-        version = version.replace('.', '')
+        version = version.replace(".", "")
         keyring = self.download_file(
             NVIDIA_DEB_REPO_KEYRING_URL.format(system=system, version=version),
             NVIDIA_KEYRING_SHA256_SUMS[system][version],
@@ -82,16 +86,23 @@ class UbuntuInstaller(LinuxInstaller):
             f"linux-headers-{self.kernel_version}"
         )
 
-    def _repo_install_driver(self, secure_boot_public_key: Optional[pathlib.Path] = None,
-                             secure_boot_private_key: Optional[pathlib.Path] = None):
+    def _repo_install_driver(
+        self,
+        secure_boot_public_key: Optional[pathlib.Path] = None,
+        secure_boot_private_key: Optional[pathlib.Path] = None,
+    ):
         system, version = self._detect_linux_distro()
         assert system == System.Ubuntu
-        if version not in ('20.04', '22.04', '24.04'):
-            raise RuntimeError(f"The 'repo' mode is not available for Ubuntu {version}.")
+        if version not in ("20.04", "22.04", "24.04"):
+            raise RuntimeError(
+                f"The 'repo' mode is not available for Ubuntu {version}."
+            )
         if secure_boot_public_key and secure_boot_private_key:
             if secure_boot_public_key.exists() and secure_boot_private_key.exists():
                 self.place_custom_dkms_signing_keys(
-                    secure_boot_public_key=secure_boot_public_key, secure_boot_private_key=secure_boot_private_key)
+                    secure_boot_public_key=secure_boot_public_key,
+                    secure_boot_private_key=secure_boot_private_key,
+                )
 
         try:
             logger.info("Installing GPU driver...")
@@ -105,5 +116,5 @@ class UbuntuInstaller(LinuxInstaller):
         Install CUDA Toolkit using DNF.
         """
         self._add_nvidia_repo()
-        major, minor = CUDA_TOOLKIT_VERSION_SHORT.split('.')
+        major, minor = CUDA_TOOLKIT_VERSION_SHORT.split(".")
         self.run(f"apt-get install -yq cuda-toolkit-{major}-{minor}")

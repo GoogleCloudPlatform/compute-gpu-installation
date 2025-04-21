@@ -19,8 +19,12 @@ from typing import Optional
 from decorators import checkpoint_decorator
 from logger import logger
 from os_installers import LinuxInstaller, RebootRequired, System
-from config import NVIDIA_DEB_REPO_KEYRING_URL, NVIDIA_DEB_REPO_KEYRING_GS_URI, NVIDIA_KEYRING_SHA256_SUMS, \
-    CUDA_TOOLKIT_VERSION_SHORT
+from config import (
+    NVIDIA_DEB_REPO_KEYRING_URL,
+    NVIDIA_DEB_REPO_KEYRING_GS_URI,
+    NVIDIA_KEYRING_SHA256_SUMS,
+    CUDA_TOOLKIT_VERSION_SHORT,
+)
 
 
 class DebianInstaller(LinuxInstaller):
@@ -32,7 +36,7 @@ class DebianInstaller(LinuxInstaller):
     def __init__(self):
         super().__init__()
         # To make sure we don't get stuck waiting for user input.
-        os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
+        os.environ["DEBIAN_FRONTEND"] = "noninteractive"
 
     @checkpoint_decorator("add_nvidia_repo", "NVIDIA repository already added.")
     def _add_nvidia_repo(self):
@@ -108,18 +112,23 @@ class DebianInstaller(LinuxInstaller):
             f"linux-headers-cloud-amd64"
         )
 
-    def _repo_install_driver(self, secure_boot_public_key: Optional[pathlib.Path]=None,
-                       secure_boot_private_key: Optional[pathlib.Path]=None):
+    def _repo_install_driver(
+        self,
+        secure_boot_public_key: Optional[pathlib.Path] = None,
+        secure_boot_private_key: Optional[pathlib.Path] = None,
+    ):
         system, version = self._detect_linux_distro()
         assert system == System.Debian
 
-        if version == '11':
+        if version == "11":
             raise RuntimeError("The 'repo' mode is not available for Debian 11.")
 
         if secure_boot_public_key and secure_boot_private_key:
             if secure_boot_public_key.exists() and secure_boot_private_key.exists():
                 self.place_custom_dkms_signing_keys(
-                    secure_boot_public_key=secure_boot_public_key, secure_boot_private_key=secure_boot_private_key)
+                    secure_boot_public_key=secure_boot_public_key,
+                    secure_boot_private_key=secure_boot_private_key,
+                )
 
         try:
             logger.info("Installing GPU driver...")
@@ -133,6 +142,6 @@ class DebianInstaller(LinuxInstaller):
         Install CUDA Toolkit using DNF.
         """
         self._add_nvidia_repo()
-        major, minor = CUDA_TOOLKIT_VERSION_SHORT.split('.')
+        major, minor = CUDA_TOOLKIT_VERSION_SHORT.split(".")
         logger.info(f"Installing CUDA Toolkit version {CUDA_TOOLKIT_VERSION_SHORT}")
         self.run(f"apt-get install -yq cuda-toolkit-{major}-{minor}")

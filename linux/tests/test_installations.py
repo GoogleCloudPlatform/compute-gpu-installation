@@ -216,14 +216,16 @@ def read_ssh_pubkey(ssh_key: str) -> str:
     return f"{user}:{pub_key}"
 
 
-@pytest.mark.parametrize("opsys,gpu,mode", itertools.product(OPERATING_SYSTEMS, GPUS, MODES))
+@pytest.mark.parametrize(
+    "opsys,gpu,mode", itertools.product(OPERATING_SYSTEMS, GPUS, MODES)
+)
 def test_install_driver_for_system(
     zipapp_gs_url: str,
     service_account: str,
     ssh_key: str,
     opsys: Tuple[str, str],
     gpu: str,
-    mode: str
+    mode: str,
 ):
     """
     Run the installation test for given operating system and GPU card.
@@ -274,7 +276,9 @@ def test_install_driver_for_system(
     meta_item = compute_v1.Items()
     meta_item.key = "startup-script"
     with open(Path(__file__).parent / "startup_script.sh") as script:
-        meta_item.value = script.read().format(GS_INSTALLER_PATH=zipapp_gs_url, MODE=mode)
+        meta_item.value = script.read().format(
+            GS_INSTALLER_PATH=zipapp_gs_url, MODE=mode
+        )
     ssh_item = compute_v1.Items()
     ssh_item.key = "ssh-keys"
     ssh_item.value = read_ssh_pubkey(ssh_key)
@@ -391,7 +395,9 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                 )
                 print("process.stdout: ", process.stdout)
                 if "CMake 3.20 or higher is required." in process.stdout:
-                    pytest.skip("CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked).")
+                    pytest.skip(
+                        "CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked)."
+                    )
                     break
                 if "Cuda Toolkit verification completed!" in process.stdout:
                     # Now we're sure that the installation worked.

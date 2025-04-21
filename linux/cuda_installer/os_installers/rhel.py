@@ -31,9 +31,11 @@ class RHELInstaller(DNFSystemInstaller):
     @checkpoint_decorator("prerequisites", "System preparations already done.")
     def _install_prerequisites(self):
         system, version = self._detect_linux_distro()
-        version = version.split('.')[0]
+        version = version.split(".")[0]
         if system == System.RHEL:
-            self.run(f"dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-{version}.noarch.rpm")
+            self.run(
+                f"dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-{version}.noarch.rpm"
+            )
         else:
             self.run("dnf install -y epel-release")
         self.run(
@@ -41,13 +43,18 @@ class RHELInstaller(DNFSystemInstaller):
         )
         raise RebootRequired
 
-    def _repo_install_driver(self, secure_boot_public_key: Optional[pathlib.Path]=None,
-                       secure_boot_private_key: Optional[pathlib.Path]=None):
+    def _repo_install_driver(
+        self,
+        secure_boot_public_key: Optional[pathlib.Path] = None,
+        secure_boot_private_key: Optional[pathlib.Path] = None,
+    ):
 
         self._add_nvidia_repo()
 
         if secure_boot_public_key and secure_boot_private_key:
-            self.place_custom_dkms_signing_keys(secure_boot_public_key, secure_boot_private_key)
+            self.place_custom_dkms_signing_keys(
+                secure_boot_public_key, secure_boot_private_key
+            )
 
         try:
             logger.info("Installing GPU driver...")
@@ -55,5 +62,3 @@ class RHELInstaller(DNFSystemInstaller):
         finally:
             if secure_boot_public_key and secure_boot_private_key:
                 self.remove_custom_dkms_signing_keys()
-
-
