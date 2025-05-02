@@ -40,7 +40,10 @@ from config import (
     CUDA_LIB_FOLDER,
     NVIDIA_PERSISTANCED_INSTALLER,
     CUDA_SAMPLES_URL,
-    CUDA_SAMPLES_SHA256_SUM, CUDA_SAMPLES_GS_URI, CUDA_SAMPLES_VERSION,
+    CUDA_SAMPLES_SHA256_SUM,
+    CUDA_SAMPLES_GS_URI,
+    CUDA_SAMPLES_VERSION,
+    INSTALLER_DIR,
 )
 from decorators import checkpoint_decorator
 from logger import logger
@@ -78,12 +81,23 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
     Handles the installation process for both driver and CUDA toolkit. Needs to have a couple of methods implemented
     in child classes, but contains most of the required logic.
     """
-    BASHRC_PATH = pathlib.Path('/etc/bash.bashrc')
+
+    BASHRC_PATH = pathlib.Path("/etc/bash.bashrc")
+
+    DKMS_MOK_PUB = pathlib.Path("/var/lib/dkms/mok.pub")
+    DKMS_MOK_KEY = pathlib.Path("/var/lib/dkms/mok.key")
 
     def __init__(self):
         self.kernel_version = self.run("uname -r", silent=True).stdout
         self.device_code = self.detect_gpu_device()
         self._file_download_verified = set()
+
+    @abc.abstractmethod
+    def _add_nvidia_repo(self):
+        """
+        Add the Nvidia repository to the system. Do nothing if already present.
+        """
+        pass
 
     @abc.abstractmethod
     def _install_prerequisites(self):
@@ -106,10 +120,48 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         """
         pass
 
-    def install_driver(self,
-                       secure_boot_public_key: Optional[pathlib.Path]=None,
-                       secure_boot_private_key: Optional[pathlib.Path]=None,
-                       ignore_no_gpu: bool=False):
+    def _backup_dkms_mok_keys(self):
+        logger.info("Moving previous keys to a backup file...")
+        try:
+            shutil.copy(self.DKMS_MOK_PUB, str(self.DKMS_MOK_PUB) + "_goo_back")
+            shutil.copy(self.DKMS_MOK_KEY, str(self.DKMS_MOK_KEY) + "_goo_back")
+        except FileNotFoundError:
+            logger.info("No previous keys to backup.")
+
+    def _restore_dkms_mok_keys(self):
+        logger.info("Restoring previous DKMS keys...")
+        try:
+            shutil.move(str(self.DKMS_MOK_PUB) + "_goo_back", self.DKMS_MOK_PUB)
+            shutil.move(str(self.DKMS_MOK_KEY) + "_goo_back", self.DKMS_MOK_KEY)
+        except FileNotFoundError:
+            logger.info("No previous keys to restore.")
+
+    def place_custom_dkms_signing_keys(
+        self,
+        secure_boot_public_key: Optional[pathlib.Path],
+        secure_boot_private_key: Optional[pathlib.Path],
+    ):
+        logger.info("Placing secure boot keys in the system...")
+        self._backup_dkms_mok_keys()
+        shutil.copy(secure_boot_public_key, self.DKMS_MOK_PUB)
+        shutil.copy(secure_boot_private_key, self.DKMS_MOK_KEY)
+        logger.info(
+            f"Secure boot keys placed in the system ({self.DKMS_MOK_KEY} and {self.DKMS_MOK_PUB})!"
+        )
+
+    def remove_custom_dkms_signing_keys(self):
+        logger.info("Removing secure boot keys from the system...")
+        self.run(f"shred -uz {self.DKMS_MOK_PUB}")
+        self.run(f"shred -uz {self.DKMS_MOK_KEY}")
+        self._restore_dkms_mok_keys()
+
+    def install_driver(
+        self,
+        secure_boot_public_key: Optional[pathlib.Path] = None,
+        secure_boot_private_key: Optional[pathlib.Path] = None,
+        ignore_no_gpu: bool = False,
+        installation_mode: str = "repo",
+    ):
         """
         Downloads the installation package and installs the driver. It also handles installation of
         drive prerequisites and will trigger a reboot on first run, when those prerequisites are installed.
@@ -123,7 +175,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             logger.info("GPU driver already installed.")
             return
 
-        installer_path = self.download_latest_driver_installer()
+        self.assert_correct_mode(installation_mode)
 
         logger.info("Installing prerequisite packages and updating kernel...")
         try:
@@ -131,10 +183,36 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         except RebootRequired:
             self.reboot()
 
+        if installation_mode == "binary":
+            self._binary_install_driver(
+                secure_boot_public_key, secure_boot_private_key, ignore_no_gpu
+            )
+        else:
+            self._add_nvidia_repo()
+            self._repo_install_driver(secure_boot_public_key, secure_boot_private_key)
+
+    def _binary_install_driver(
+        self,
+        secure_boot_public_key: Optional[pathlib.Path] = None,
+        secure_boot_private_key: Optional[pathlib.Path] = None,
+        ignore_no_gpu: bool = False,
+    ):
+        installer_path = self.download_latest_driver_installer()
+
         logger.info("Installing GPU drivers for your device...")
-        if secure_boot_public_key and secure_boot_private_key and secure_boot_private_key.is_file() and secure_boot_public_key.is_file():
-            logger.info(f"Using secure boot keys from {secure_boot_public_key.absolute()} and {secure_boot_private_key.absolute()}")
-            self.run(f"sh {installer_path} -s --module-signing-secret-key={secure_boot_private_key.absolute()} --module-signing-public-key={secure_boot_public_key.absolute()}", check=True)
+        if (
+            secure_boot_public_key
+            and secure_boot_private_key
+            and secure_boot_private_key.is_file()
+            and secure_boot_public_key.is_file()
+        ):
+            logger.info(
+                f"Using secure boot keys from {secure_boot_public_key.absolute()} and {secure_boot_private_key.absolute()}"
+            )
+            self.run(
+                f"sh {installer_path} -s --module-signing-secret-key={secure_boot_private_key.absolute()} --module-signing-public-key={secure_boot_public_key.absolute()}",
+                check=True,
+            )
         else:
             self.run(f"sh {installer_path} -s", check=True)
 
@@ -145,6 +223,14 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             logger.error(
                 "Something went wrong with driver installation. The installation failed :("
             )
+
+    @abc.abstractmethod
+    def _repo_install_driver(
+        self,
+        secure_boot_public_key: Optional[pathlib.Path] = None,
+        secure_boot_private_key: Optional[pathlib.Path] = None,
+    ):
+        raise NotImplementedError
 
     def uninstall_driver(self):
         """
@@ -181,31 +267,50 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
     @checkpoint_decorator(
         "cuda_installation", "CUDA toolkit already marked as installed."
     )
-    def _install_cuda(self, ignore_no_gpu: bool = False):
+    def _install_cuda(
+        self, ignore_no_gpu: bool = False, installation_mode: str = "repo"
+    ):
         """
         This is the method to install the CUDA Toolkit. It will install the toolkit and execute post-installation
         configuration in the operating system, to make it available for all users.
         """
+        self.assert_correct_mode(installation_mode)
+
         if not (self.verify_driver() or ignore_no_gpu):
             logger.info(
                 "CUDA installation requires GPU driver to be installed first. "
                 "Attempting to install GPU driver now."
             )
-            self.install_driver()
+            self.install_driver(installation_mode=installation_mode)
 
-        installer_path = self.download_cuda_toolkit_installer()
+        if installation_mode == "binary":
+            self._install_cuda_binary()
+        else:
+            self._add_nvidia_repo()
+            self._install_cuda_repo()
 
-        logger.info("Installing CUDA toolkit...")
-        self.run(f"sh {installer_path} --silent --toolkit", check=True)
-        logger.info("CUDA toolkit installation completed!")
         logger.info("Executing post-installation actions...")
         self.cuda_postinstallation_actions()
         logger.info("CUDA post-installation actions completed!")
         raise RebootRequired
 
-    def install_cuda(self, ignore_no_gpu: bool = False):
+    def _install_cuda_binary(self):
+        logger.info("Downloading CUDA Toolkit package...")
+        installer_path = self.download_cuda_toolkit_installer()
+
+        logger.info("Installing CUDA toolkit...")
+        self.run(f"sh {installer_path} --silent --toolkit", check=True)
+        logger.info("CUDA toolkit installation completed!")
+
+    @abc.abstractmethod
+    def _install_cuda_repo(self):
+        pass
+
+    def install_cuda(
+        self, ignore_no_gpu: bool = False, installation_mode: str = "repo"
+    ):
         try:
-            self._install_cuda(ignore_no_gpu)
+            self._install_cuda(ignore_no_gpu, installation_mode)
         except RebootRequired:
             self.reboot()
 
@@ -238,8 +343,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 + "${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}\n"
             )
 
-        with open(self.BASHRC_PATH, mode='r+') as global_bashrc:
-            logger.info(f"Updating {self.BASHRC_PATH} to source {CUDA_PROFILE_FILENAME}...")
+        with open(self.BASHRC_PATH, mode="r+") as global_bashrc:
+            logger.info(
+                f"Updating {self.BASHRC_PATH} to source {CUDA_PROFILE_FILENAME}..."
+            )
             content = global_bashrc.read()
             global_bashrc.seek(0)
             global_bashrc.write("\n# Enabling NVIDIA CUDA Toolkit\n")
@@ -264,7 +371,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             with chdir(temp_dir):
                 self.run("tar -xf installer.tar.bz2", silent=True)
                 logger.info("Executing nvidia-persistenced installer...")
-                self.run("sh nvidia-persistenced-init/install.sh", check=self.check_gpu_present())
+                self.run(
+                    "sh nvidia-persistenced-init/install.sh",
+                    check=self.check_gpu_present(),
+                )
 
     def verify_cuda(self) -> bool:
         """
@@ -284,7 +394,8 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 with chdir(temp_dir / f"cuda-samples-{CUDA_SAMPLES_VERSION}"):
                     self.run("cmake .", check=True)
                 with chdir(
-                    temp_dir / f"cuda-samples-{CUDA_SAMPLES_VERSION}/Samples/1_Utilities/deviceQuery"
+                    temp_dir
+                    / f"cuda-samples-{CUDA_SAMPLES_VERSION}/Samples/1_Utilities/deviceQuery"
                 ):
                     self.run("make", check=True)
                     dev_query = self.run("./deviceQuery", check=True)
@@ -294,7 +405,8 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                         )
                         return False
                 with chdir(
-                    temp_dir / f"cuda-samples-{CUDA_SAMPLES_VERSION}/Samples/1_Utilities/bandwidthTest"
+                    temp_dir
+                    / f"cuda-samples-{CUDA_SAMPLES_VERSION}/Samples/1_Utilities/bandwidthTest"
                 ):
                     self.run("make", check=True)
                     bandwidth = self.run("./bandwidthTest", check=True)
@@ -450,13 +562,19 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
     def download_cuda_toolkit_installer(self) -> pathlib.Path:
         logger.info(f"Downloading CUDA installation kit ({CUDA_TOOLKIT_VERSION})...")
-        return self.download_file(CUDA_TOOLKIT_URL, CUDA_TOOLKIT_SHA256_SUM, CUDA_TOOLKIT_GS_URI)
+        return self.download_file(
+            CUDA_TOOLKIT_URL, CUDA_TOOLKIT_SHA256_SUM, CUDA_TOOLKIT_GS_URI
+        )
 
     def download_latest_driver_installer(self) -> pathlib.Path:
         logger.info(f"Downloading latest driver installer ({LATEST_DRIVER_VERSION})...")
-        return self.download_file(LATEST_DRIVER_URL, LATEST_DRIVER_SHA256_SUM, LATEST_DRIVER_GS_URI)
+        return self.download_file(
+            LATEST_DRIVER_URL, LATEST_DRIVER_SHA256_SUM, LATEST_DRIVER_GS_URI
+        )
 
-    def download_file(self, url: str, sha256sum: str, gs_uri: str=None) -> pathlib.Path:
+    def download_file(
+        self, url: str, sha256sum: str, gs_uri: str = None
+    ) -> pathlib.Path:
         """
         Uses `curl` to download a file pointed by url. It will also execute `sha256sum` on the downloaded file
         to verify if it's matching with the expected hash.
@@ -472,7 +590,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if file_path.exists() and url in self._file_download_verified:
             return file_path
 
-        gsutil_available = self.run("which gsutil", check=False, silent=True).returncode == 0
+        gsutil_available = (
+            self.run("which gsutil", check=False, silent=True).returncode == 0
+        )
 
         if not file_path.exists():
             if gsutil_available and gs_uri:
@@ -489,65 +609,92 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         self._file_download_verified.add(url)
         return file_path
 
+    @staticmethod
+    def _detect_linux_distro() -> (System, str):
+        """
+        Checks the /etc/os-release file to figure out what distribution of OS
+        we're running.
+        """
+        with open("/etc/os-release") as os_release:
+            lines = [
+                line.strip() for line in os_release.readlines() if line.strip() != ""
+            ]
+            info = {
+                k: v.strip("'\"")
+                for k, v in (line.split("=", maxsplit=1) for line in lines)
+            }
 
-def _detect_linux_distro() -> (System, str):
-    """
-    Checks the /etc/os-release file to figure out what distribution of OS
-    we're running.
-    """
-    with open("/etc/os-release") as os_release:
-        lines = [line.strip() for line in os_release.readlines() if line.strip() != ""]
-        info = {
-            k: v.strip("'\"")
-            for k, v in (line.split("=", maxsplit=1) for line in lines)
-        }
+        name = info["NAME"]
 
-    name = info["NAME"]
+        if name.startswith("Debian"):
+            system = System.Debian
+            version = info["VERSION"].split()[0]  # 11 (rodete) -> 11
+        elif name.startswith("CentOS"):
+            system = System.CentOS
+            version = info["VERSION_ID"]  # 8
+        elif name.startswith("Rocky"):
+            system = System.Rocky
+            version = info["VERSION_ID"]  # 8.4
+        elif name.startswith("Ubuntu"):
+            system = System.Ubuntu
+            version = info["VERSION_ID"]  # 20.04
+        elif name.startswith("SLES"):
+            system = System.SUSE
+            version = info["VERSION_ID"]  # 15.3
+        elif name.startswith("Red Hat"):
+            system = System.RHEL
+            version = info["VERSION_ID"]  # 8.4
+        elif name.startswith("Fedora"):
+            system = System.Fedora
+            version = info["VERSION_ID"]  # 34
+        else:
+            raise RuntimeError("Unrecognized operating system.")
+        return system, version
 
-    if name.startswith("Debian"):
-        system = System.Debian
-        version = info["VERSION"].split()[0]  # 11 (rodete) -> 11
-    elif name.startswith("CentOS"):
-        system = System.CentOS
-        version = info["VERSION_ID"]  # 8
-    elif name.startswith("Rocky"):
-        system = System.Rocky
-        version = info["VERSION_ID"]  # 8.4
-    elif name.startswith("Ubuntu"):
-        system = System.Ubuntu
-        version = info["VERSION_ID"]  # 20.04
-    elif name.startswith("SLES"):
-        system = System.SUSE
-        version = info["VERSION_ID"]  # 15.3
-    elif name.startswith("Red Hat"):
-        system = System.RHEL
-        version = info["VERSION_ID"]  # 8.4
-    elif name.startswith("Fedora"):
-        system = System.Fedora
-        version = info["VERSION_ID"]  # 34
-    else:
-        raise RuntimeError("Unrecognized operating system.")
-    return system, version
+    @classmethod
+    def get_installer(cls) -> "LinuxInstaller":
+        """
+        Retrieve an Installer instance appropriate for the hosting operating system.
+        """
+        system, version = cls._detect_linux_distro()
 
+        from os_installers.debian import DebianInstaller
+        from os_installers.ubuntu import UbuntuInstaller
+        from os_installers.rhel import RHELInstaller
+        from os_installers.rocky import RockyInstaller
 
-def get_installer() -> LinuxInstaller:
-    """
-    Retrieve an Installer instance appropriate for the hosting operating system.
-    """
-    system, version = _detect_linux_distro()
+        if system == System.Debian:
+            return DebianInstaller()
+        elif system == System.Ubuntu:
+            return UbuntuInstaller()
+        elif system == System.RHEL:
+            return RHELInstaller()
+        elif system == System.Rocky:
+            return RockyInstaller()
+        else:
+            raise NotImplementedError(
+                "Sorry, don't know how to install for this system."
+            )
 
-    from os_installers.debian import DebianInstaller
-    from os_installers.ubuntu import UbuntuInstaller
-    from os_installers.rhel import RHELInstaller
-    from os_installers.rocky import RockyInstaller
+    @staticmethod
+    def assert_correct_mode(mode: str):
+        """
+        Check if the previously used installation method is the same as current one. If it's not, abort the process and
+        display a message about the problem.
+        """
+        mode_file = INSTALLER_DIR / "mode"
 
-    if system == System.Debian:
-        return DebianInstaller()
-    elif system == System.Ubuntu:
-        return UbuntuInstaller()
-    elif system == System.RHEL:
-        return RHELInstaller()
-    elif system == System.Rocky:
-        return RockyInstaller()
-    else:
-        raise NotImplementedError("Sorry, don't know how to install for this system.")
+        if not mode_file.exists():
+            # First run, no mode file exists, we make it and set the mode
+            mode_file.write_text(mode)
+            return
+
+        # There was a previous mode, need to make sure, we're in the same mode.
+        prev_mode = mode_file.read_text().strip()
+        if prev_mode == mode:
+            return
+
+        logger.error(
+            f"Previous installations using '{prev_mode}' detected, that's different than requested '{mode}' mode. You can't switch installation modes, try again in '{prev_mode}' mode or with a clean system."
+        )
+        assert f"You have to use {prev_mode} in this system."

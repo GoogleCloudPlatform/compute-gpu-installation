@@ -51,6 +51,8 @@ OPERATING_SYSTEMS = (
     ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
 )
 
+MODES = ("binary", "repo")
+
 GPUS = {
     # "L4": "nvidia-l4",
     # "A100": "nvidia-tesla-a100",
@@ -88,7 +90,7 @@ MACHINE_TYPES = {
     "L4": "g2-standard-4",
     "A100": "a2-highgpu-1g",
     "P4": "n1-standard-8",
-    "T4": "n1-standard-8",
+    "T4": "n1-standard-16",
     "P100": "n1-standard-8",
     "V100": "n1-standard-8",
 }
@@ -193,8 +195,8 @@ def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk
     boot_disk = compute_v1.AttachedDisk()
     initialize_params = compute_v1.AttachedDiskInitializeParams()
     initialize_params.source_image = source_image_link
-    initialize_params.disk_size_gb = 100
-    initialize_params.disk_type = f"zones/{zone}/diskTypes/pd-standard"
+    initialize_params.disk_size_gb = 200
+    initialize_params.disk_type = f"zones/{zone}/diskTypes/pd-ssd"
     boot_disk.initialize_params = initialize_params
     # Remember to set auto_delete to True if you want the disk to be deleted when you delete
     # your VM instance.
@@ -214,17 +216,23 @@ def read_ssh_pubkey(ssh_key: str) -> str:
     return f"{user}:{pub_key}"
 
 
-@pytest.mark.parametrize("opsys,gpu", itertools.product(OPERATING_SYSTEMS, GPUS))
+@pytest.mark.parametrize(
+    "opsys,gpu,mode", itertools.product(OPERATING_SYSTEMS, GPUS, MODES)
+)
 def test_install_driver_for_system(
     zipapp_gs_url: str,
     service_account: str,
     ssh_key: str,
     opsys: Tuple[str, str],
     gpu: str,
+    mode: str,
 ):
     """
     Run the installation test for given operating system and GPU card.
     """
+    if mode == "repo" and opsys[1] == "debian-11":
+        # Repo mode doesn't work with Debian 11.
+        pytest.skip()
     zone = random.choice(ZONES[gpu])
 
     op_sys_image = get_image_from_family(*opsys)
@@ -245,7 +253,7 @@ def test_install_driver_for_system(
 
     instance = compute_v1.Instance()
     instance.machine_type = f"zones/{zone}/machineTypes/{MACHINE_TYPES[gpu]}"
-    instance_name = f"gpu-test-{opsys[1]}-{gpu}-".lower() + uuid.uuid4().hex[:10]
+    instance_name = f"gpu-test-{opsys[1]}-{gpu}-{mode}-".lower() + uuid.uuid4().hex[:10]
     instance.name = instance_name
     instance.disks = disks
     instance.guest_accelerators = [accelerator]
@@ -268,7 +276,9 @@ def test_install_driver_for_system(
     meta_item = compute_v1.Items()
     meta_item.key = "startup-script"
     with open(Path(__file__).parent / "startup_script.sh") as script:
-        meta_item.value = script.read().format(GS_INSTALLER_PATH=zipapp_gs_url)
+        meta_item.value = script.read().format(
+            GS_INSTALLER_PATH=zipapp_gs_url, MODE=mode
+        )
     ssh_item = compute_v1.Items()
     ssh_item.key = "ssh-keys"
     ssh_item.value = read_ssh_pubkey(ssh_key)
@@ -385,7 +395,9 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                 )
                 print("process.stdout: ", process.stdout)
                 if "CMake 3.20 or higher is required." in process.stdout:
-                    pytest.skip("CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked).")
+                    pytest.skip(
+                        "CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked)."
+                    )
                     break
                 if "Cuda Toolkit verification completed!" in process.stdout:
                     # Now we're sure that the installation worked.

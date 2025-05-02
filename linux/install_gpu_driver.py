@@ -24,7 +24,10 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Optional
 
-warnings.warn("This script is being deprecated. Please use cuda_installer as replacement.", DeprecationWarning)
+warnings.warn(
+    "This script is being deprecated. Please use cuda_installer as replacement.",
+    DeprecationWarning,
+)
 
 DRIVER_VERSION = "550.54.15"
 K80_DRIVER_VERSION = "470.199.02"
@@ -54,18 +57,18 @@ SUPPORTED_SYSTEMS = {
     System.RHEL: {"7", "8", "9"},
     System.Rocky: {"8", "9"},
     System.SUSE: set(),
-    System.Ubuntu: {"18", "20", "21", "22"}
+    System.Ubuntu: {"18", "20", "21", "22"},
 }
 
-INSTALLER_DIR = pathlib.Path('/opt/google/gpu-installer/')
-DEPENDENCIES_INSTALLED_FLAG = INSTALLER_DIR / 'deps_installed.flag'
+INSTALLER_DIR = pathlib.Path("/opt/google/gpu-installer/")
+DEPENDENCIES_INSTALLED_FLAG = INSTALLER_DIR / "deps_installed.flag"
 INSTALLER_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class Logger:
-    STDOUT_LOG = INSTALLER_DIR / 'out.log'
+    STDOUT_LOG = INSTALLER_DIR / "out.log"
     STDOUT_LOG_F = None
-    STDERR_LOG = INSTALLER_DIR / 'err.log'
+    STDERR_LOG = INSTALLER_DIR / "err.log"
     STDERR_LOG_F = None
 
     @classmethod
@@ -84,8 +87,8 @@ class Logger:
         cls.STDOUT_LOG.touch(exist_ok=True)
         cls.STDERR_LOG.touch(exist_ok=True)
 
-        cls.STDOUT_LOG_F = open(cls.STDOUT_LOG, mode='a')
-        cls.STDERR_LOG_F = open(cls.STDERR_LOG, mode='a')
+        cls.STDOUT_LOG_F = open(cls.STDOUT_LOG, mode="a")
+        cls.STDERR_LOG_F = open(cls.STDERR_LOG, mode="a")
 
         atexit.register(cls.close_logs)
 
@@ -110,7 +113,15 @@ print_out = Logger.print_out
 print_err = Logger.print_err
 
 
-def run(command: str, check=True, input=None, cwd=None, silent=False, environment=None, retries=0) -> subprocess.CompletedProcess:
+def run(
+    command: str,
+    check=True,
+    input=None,
+    cwd=None,
+    silent=False,
+    environment=None,
+    retries=0,
+) -> subprocess.CompletedProcess:
     """
     Runs a provided command, streaming its output to the log files.
 
@@ -125,17 +136,25 @@ def run(command: str, check=True, input=None, cwd=None, silent=False, environmen
     :return: CompletedProcess instance - the result of the command execution.
     """
     if not silent:
-        log_msg = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] " \
-                  f"Executing: {command}" + os.linesep
+        log_msg = (
+            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+            f"Executing: {command}" + os.linesep
+        )
         print_out(log_msg)
         print_err(log_msg, print_=False)
 
     try_count = 0
     while try_count <= retries:
         try:
-            proc = subprocess.run(shlex.split(command), check=check,
-                                  stderr=subprocess.PIPE, stdout=subprocess.PIPE,
-                                  input=input, cwd=cwd, env=environment)
+            proc = subprocess.run(
+                shlex.split(command),
+                check=check,
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                input=input,
+                cwd=cwd,
+                env=environment,
+            )
         except subprocess.SubprocessError as err:
             print_err(f"Error while executing `{command}`:")
             print_err(str(err))
@@ -156,7 +175,7 @@ def detect_gpu_device() -> Optional[str]:
     """
     Check if there is an NVIDIA GPU device attached and return its device code.
     """
-    lspci = run('lspci -n')
+    lspci = run("lspci -n")
     output = lspci.stdout.decode()
     dev_re = re.compile(r"10de:[\w\d]{4}")
     for line in output.splitlines():
@@ -174,8 +193,10 @@ def check_python_version():
     if sys.version_info.major == 3 and sys.version_info.minor >= 6:
         return
     version = "{}.{}".format(sys.version_info.major, sys.version_info.minor)
-    raise RuntimeError("Unsupported Python version {}. "
-                       "Supported versions: 3.6 - 3.11".format(version))
+    raise RuntimeError(
+        "Unsupported Python version {}. "
+        "Supported versions: 3.6 - 3.11".format(version)
+    )
 
 
 def detect_linux_distro() -> (System, str):
@@ -183,33 +204,36 @@ def detect_linux_distro() -> (System, str):
     Checks the /etc/os-release file to figure out what distribution of OS
     we're running.
     """
-    with open('/etc/os-release') as os_release:
-        lines = [line.strip() for line in os_release.readlines() if line.strip() != '']
-        info = {k: v.strip("'\"") for k, v in (line.split('=', maxsplit=1) for line in lines)}
+    with open("/etc/os-release") as os_release:
+        lines = [line.strip() for line in os_release.readlines() if line.strip() != ""]
+        info = {
+            k: v.strip("'\"")
+            for k, v in (line.split("=", maxsplit=1) for line in lines)
+        }
 
-    name = info['NAME']
+    name = info["NAME"]
 
     if name.startswith("Debian"):
         system = System.Debian
-        version = info['VERSION'].split()[0]  # 11 (rodete) -> 11
+        version = info["VERSION"].split()[0]  # 11 (rodete) -> 11
     elif name.startswith("CentOS"):
         system = System.CentOS
-        version = info['VERSION_ID']  # 8
+        version = info["VERSION_ID"]  # 8
     elif name.startswith("Rocky"):
         system = System.Rocky
-        version = info['VERSION_ID']  # 8.4
+        version = info["VERSION_ID"]  # 8.4
     elif name.startswith("Ubuntu"):
         system = System.Ubuntu
-        version = info['VERSION_ID']  # 20.04
+        version = info["VERSION_ID"]  # 20.04
     elif name.startswith("SLES"):
         system = System.SUSE
-        version = info['VERSION_ID']  # 15.3
+        version = info["VERSION_ID"]  # 15.3
     elif name.startswith("Red Hat"):
         system = System.RHEL
-        version = info['VERSION_ID']  # 8.4
+        version = info["VERSION_ID"]  # 8.4
     elif name.startswith("Fedora"):
         system = System.Fedora
-        version = info['VERSION_ID']  # 34
+        version = info["VERSION_ID"]  # 34
     else:
         raise RuntimeError("Unrecognized operating system.")
     return system, version
@@ -220,19 +244,25 @@ def check_linux_distro(system: System, version: str) -> bool:
     Checks if given system version is supported by this script.
     Returns False if not, and prints information about the incompatibility.
     """
-    if '.' in version:
-        version = version.split('.')[0]
+    if "." in version:
+        version = version.split(".")[0]
 
     if len(SUPPORTED_SYSTEMS[system]) == 0:
         print_out(f"The {system} distribution is not supported by this script.")
-        print_out("You may check https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html")
+        print_out(
+            "You may check https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html"
+        )
         print_out("to try installing the drivers manually.")
         return False
     elif version not in SUPPORTED_SYSTEMS[system]:
         print_out(f"The version {version} of {system} is not supported by this script.")
         print_out(f"Supported versions: {SUPPORTED_SYSTEMS[system]}")
-        print_out("You may try installing the driver manually following instructions from: ")
-        print_out("https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html")
+        print_out(
+            "You may try installing the driver manually following instructions from: "
+        )
+        print_out(
+            "https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html"
+        )
         return False
 
     return True
@@ -269,25 +299,41 @@ def install_dependencies_centos_rhel_rocky(system: System, version: str) -> bool
     if system == System.Rocky:
         if version.startswith("8"):
             run("dnf config-manager --set-enabled powertools")
-        run(f"dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel{version[0]}/x86_64/cuda-rhel{version[0]}.repo")
+        run(
+            f"dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel{version[0]}/x86_64/cuda-rhel{version[0]}.repo"
+        )
         run("dnf update -y --skip-broken")
         run("dnf install -y epel-release")
-        run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
+        run(
+            f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}"
+        )
     elif system == System.CentOS and version.startswith("8"):
         run("dnf config-manager --set-enabled powertools")
         run("dnf install -y epel-release epel-next-release")
     elif system == System.CentOS and version.startswith("9"):
-        run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-next-release-9-1.el9.next.noarch.rpm")
-        run("dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-release-9-1.el9.next.noarch.rpm")
+        run(
+            "dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-next-release-9-1.el9.next.noarch.rpm"
+        )
+        run(
+            "dnf install -y https://dl.fedoraproject.org/pub/epel/next/9/Everything/x86_64/Packages/e/epel-release-9-1.el9.next.noarch.rpm"
+        )
     elif system == System.RHEL and version[0] in ("8", "9"):
-        run(f"dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel{version[0]}/x86_64/cuda-rhel{version[0]}.repo")
+        run(
+            f"dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel{version[0]}/x86_64/cuda-rhel{version[0]}.repo"
+        )
         run("dnf update -y --skip-broken")
-        run(f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}")
-        run(f"dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-{version[0]}.noarch.rpm")
+        run(
+            f"dnf install -y kernel-devel-{kernel_version} kernel-headers-{kernel_version}"
+        )
+        run(
+            f"dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-{version[0]}.noarch.rpm"
+        )
 
-    run(f"{binary} install -y kernel-devel epel-release "
+    run(
+        f"{binary} install -y kernel-devel epel-release "
         f"kernel-headers pciutils gcc make dkms acpid "
-        f"libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig")
+        f"libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig"
+    )
 
     return False
 
@@ -306,7 +352,7 @@ def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
     required packages are installed and correct version of g++ will be used.
     """
     # To make sure we don't get stuck waiting for user input.
-    os.environ['DEBIAN_FRONTEND'] = 'noninteractive'
+    os.environ["DEBIAN_FRONTEND"] = "noninteractive"
 
     kernel_version = run("uname -r").stdout.decode().strip()
     run("apt update")
@@ -314,11 +360,15 @@ def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
     if "Generating grub configuration file" in upgrade:
         # There was a kernel update, we need to reboot to work with proper kernel version
         return True
-    run(f"apt install -y linux-headers-{kernel_version} "
-        "software-properties-common pciutils gcc make dkms")
+    run(
+        f"apt install -y linux-headers-{kernel_version} "
+        "software-properties-common pciutils gcc make dkms"
+    )
     if system == System.Ubuntu and version.startswith("22"):
-        run("update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 "
-            "--slave /usr/bin/g++ g++ /usr/bin/g++-12 --slave /usr/bin/gcov gcov /usr/bin/gcov-12")
+        run(
+            "update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 "
+            "--slave /usr/bin/g++ g++ /usr/bin/g++-12 --slave /usr/bin/gcov gcov /usr/bin/gcov-12"
+        )
     return False
 
 
@@ -326,12 +376,13 @@ def reboot():
     """
     Reboots the system.
     """
-    print_out("The system needs to be rebooted to complete the installation process. "
-              "The process will be continued after the reboot.")
+    print_out(
+        "The system needs to be rebooted to complete the installation process. "
+        "The process will be continued after the reboot."
+    )
     print_out("Rebooting now.")
     run("reboot")
     sys.exit(0)
-
 
 
 def install_dependencies(system: System, version: str):
@@ -353,12 +404,12 @@ def install_dependencies(system: System, version: str):
         reboot_flag = install_dependencies_sles(system, version)
     else:
         raise RuntimeError("Unsupported operating system!")
-    
+
     if reboot_flag:
         reboot()
     else:
-        with DEPENDENCIES_INSTALLED_FLAG.open(mode='w') as flag:
-            flag.write('1')
+        with DEPENDENCIES_INSTALLED_FLAG.open(mode="w") as flag:
+            flag.write("1")
 
     if system == System.CentOS:
         # Both supported CentOS versions require reboot after this step
@@ -384,12 +435,18 @@ def install_driver_runfile(system: System, version: str):
     no_drm = ""
 
     while attempt < 3:
-        install_run = run("sh {} -s {} {} --no-cc-version-check".format(binary, dkms, no_drm), check=False)
+        install_run = run(
+            "sh {} -s {} {} --no-cc-version-check".format(binary, dkms, no_drm),
+            check=False,
+        )
 
         if install_run.returncode == 0:
             return
 
-        if "Failed to install the kernel module through DKMS" in install_run.stderr.decode():
+        if (
+            "Failed to install the kernel module through DKMS"
+            in install_run.stderr.decode()
+        ):
             dkms = ""
 
         if "--no-drm" in install_run.stderr.decode():
@@ -403,15 +460,20 @@ def post_install_steps():
     """
     Write the success message to log.
     """
-    with open(INSTALLER_DIR / 'success', mode='w') as success_file:
+    with open(INSTALLER_DIR / "success", mode="w") as success_file:
         success_file.write("Installation was completed on {}".format(datetime.now()))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Install or verify GPU drivers.')
-    parser.add_argument("action", choices=['install', 'verify'], default="install", nargs="?")
-    parser.add_argument("--force", help="Forces driver installation, even if there is no GPU detected.",
-                        action='store_true')
+    parser = argparse.ArgumentParser(description="Install or verify GPU drivers.")
+    parser.add_argument(
+        "action", choices=["install", "verify"], default="install", nargs="?"
+    )
+    parser.add_argument(
+        "--force",
+        help="Forces driver installation, even if there is no GPU detected.",
+        action="store_true",
+    )
 
     args = parser.parse_args()
     return args
@@ -428,7 +490,7 @@ def install(args: argparse.Namespace):
     Logger.setup_log_dir()
 
     if check_driver_installed() and not args.force:
-        print('Already installed.')
+        print("Already installed.")
         sys.exit(0)
 
     # Check what system we're running
@@ -436,8 +498,10 @@ def install(args: argparse.Namespace):
     # Install the drivers and CUDA Toolkit
     install_dependencies(system, version)
     if not detect_gpu_device() and not args.force:
-        print("There doesn't seem to be a GPU unit connected to your system. "
-              "Aborting drivers installation.")
+        print(
+            "There doesn't seem to be a GPU unit connected to your system. "
+            "Aborting drivers installation."
+        )
         sys.exit(0)
     install_driver_runfile(system, version)
     post_install_steps()
@@ -449,17 +513,19 @@ def main():
     """
     args = parse_args()
 
-    if args.action == 'verify':
+    if args.action == "verify":
         if not check_driver_installed():
             print("The driver is not installed.")
         else:
-            print("The driver seems to be installed. Run `nvidia-smi` to check details.")
+            print(
+                "The driver seems to be installed. Run `nvidia-smi` to check details."
+            )
         return
-    elif args.action == 'install':
+    elif args.action == "install":
         install(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except Exception as err:
