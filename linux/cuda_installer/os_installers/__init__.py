@@ -496,6 +496,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 continue
 
         if check and proc.returncode:
+            logger.error("Command exited with non-zero code.")
+            logger.error("Stdout:\n" + proc.stdout.decode())
+            logger.error("Stderr:\n" + proc.stderr.decode())
+            logger.error("--------------------------------")
             raise subprocess.SubprocessError("Command exited with non-zero code")
 
         return subprocess.CompletedProcess(

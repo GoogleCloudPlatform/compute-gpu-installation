@@ -105,7 +105,7 @@ class Builder:
                 )
                 sys.exit(1)
         else:
-            tmp_dir = tempfile.TemporaryDirectory(delete=False)
+            tmp_dir = tempfile.TemporaryDirectory(delete=True)
             keys_dir = pathlib.Path(tmp_dir.name)
             atexit.register(tmp_dir.cleanup)
             atexit.register(lambda: Builder.cleanup_keys(pub_key, priv_key))

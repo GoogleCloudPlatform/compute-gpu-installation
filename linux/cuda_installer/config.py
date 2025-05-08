@@ -54,19 +54,19 @@ except urllib.error.URLError:
     MULTIREGION = "us"
 
 
-LATEST_DRIVER_VERSION = "570.124.06"
+LATEST_DRIVER_VERSION = "575.51.03"
 LATEST_DRIVER_URL = f"https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
 LATEST_DRIVER_GS_URI = f"gs://compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
 LATEST_DRIVER_SHA256_SUM = (
-    "1818c90657d17e510de9fa032385ff7e99063e848e901cb4636ee71c8b339313"
+    "db563ec94e413e25a65bb92c36a06970c4b27659102d3ee806f1b06b8c19b6d9"
 )
 
-CUDA_TOOLKIT_VERSION = "12.8.1"
-CUDA_TOOLKIT_VERSION_SHORT = "12.8"
+CUDA_TOOLKIT_VERSION = "12.9.0"
+CUDA_TOOLKIT_VERSION_SHORT = "12.9"
 CUDA_TOOLKIT_URL = f"https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_TOOLKIT_VERSION}_{LATEST_DRIVER_VERSION}_linux.run"
 CUDA_TOOLKIT_GS_URI = f"gs://compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_TOOLKIT_VERSION}_{LATEST_DRIVER_VERSION}_linux.run"
 CUDA_TOOLKIT_SHA256_SUM = (
-    "228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797"
+    "bbce2b760fe2096ca1c86f729e03bf377c1519add7b2755ecc4e9b0a9e07ee43"
 )
 
 # Repo install settings
@@ -97,6 +97,7 @@ NVIDIA_KEYRING_SHA256_SUMS = {
     },
 }
 
+# Hosted on GitHub: https://github.com/NVIDIA/cuda-samples
 CUDA_SAMPLES_VERSION = "12.8"
 
 CUDA_SAMPLES_URL = f"https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/cuda_samples/v{CUDA_SAMPLES_VERSION}.tar.gz"
