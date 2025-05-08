@@ -18,8 +18,7 @@ import os
 import pathlib
 import sys
 
-import config
-from logger import logger
+import image_builder
 
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import LinuxInstaller, debian, ubuntu, rhel, rocky
@@ -67,6 +66,124 @@ def parse_args():
         help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'.",
         required=False,
         default="repo",
+    )
+
+    image_builder = subparsers.add_parser(
+        "build_image",
+        help="Prepares a new disk image with drivers and/or CUDA Toolkit installed.",
+    )
+
+    image_builder.add_argument(
+        "--installation-mode",
+        help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'.",
+        required=False,
+        default="repo",
+    )
+
+    image_builder.add_argument(
+        "--save-keys-path",
+        help="Saves the keys used to sign the installed drivers in the given location. If not provided, the keys are destroyed at the end of the process.",
+        required=False,
+        type=pathlib.Path,
+    )
+
+    image_builder.add_argument(
+        "--driver-only",
+        help="Limits the process to only install GPU driver, without installing CUDA Toolkit.",
+        action="store_true",
+    )
+
+    image_builder.add_argument(
+        "--project",
+        help="Project in which the image building process will happen and in which the Image will be created.",
+        required=True,
+        type=str,
+    )
+
+    image_builder.add_argument(
+        "--vm-zone",
+        help="Zone in which the image building process will happen (a small VM needs to be created to prepare the image)",
+        required=True,
+        type=str,
+    )
+
+    image_builder.add_argument(
+        "--vm-type",
+        help="Machine type that will be used to prepare the disk image. Default: e2-standard-8",
+        required=False,
+        default="e2-standard-8",
+    )
+
+    image_builder.add_argument(
+        "--vm-disk-type",
+        help="Type of the disk used for the image preparation. Available types: ssd, balanced and standard. Default: balanced",
+        required=False,
+        default="balanced",
+    )
+
+    image_builder.add_argument(
+        "--vm-disk-size",
+        help="Size of the disk used for the image preparation in Gb. Default: 100",
+        required=False,
+        default=100,
+        type=int,
+    )
+
+    image_builder.add_argument(
+        "--family",
+        help="Save the created image as part of a given image family.",
+        required=False,
+        action="store",
+    )
+
+    image_builder.add_argument(
+        "--image-region",
+        help="Location to save the disk image in. This can be a region or multi-region (us, eu or asia) name. If not provided, it will be the multiregion inferred from the --vm-zone option.",
+        required=False,
+        type=str,
+    )
+
+    image_builder.add_argument(
+        "--secure-boot-pub-key",
+        help="Path to the secure boot public key file.",
+        required=False,
+        type=pathlib.Path,
+    )
+
+    image_builder.add_argument(
+        "--secure-boot-priv-key",
+        help="Path to the secure boot private key file.",
+        required=False,
+        type=pathlib.Path,
+    )
+
+    image_builder.add_argument(
+        "--base-image",
+        help="Base image to build upon. Available options: debian-12, rhel-8, rhel-9, rocky-8, rocky-9, ubuntu-22 and ubuntu-24. Default: ubuntu-24",
+        default="ubuntu-24",
+    )
+
+    image_builder.add_argument(
+        "--skip-cleanup",
+        help="After the image is created, the build VM and it's disk will not be deleted.",
+        action="store_true",
+    )
+
+    image_builder.add_argument(
+        "--interactive",
+        help="The image preparation process will be paused before shutting down the build VM, and SSH session will be opened. This way you can customize your future image, install additional packages etc.",
+        action="store_true",
+    )
+
+    image_builder.add_argument(
+        "--custom-script",
+        help="Provide a bash script that will be executed on the build VM before it's turned off. This way you can install additional packages and execute additional configuration steps.",
+        action="store",
+        type=pathlib.Path,
+    )
+
+    image_builder.add_argument(
+        "image_name", help="Name of the image to be created.", type=str
     )
 
     # Subparser for verify_driver
@@ -122,12 +239,10 @@ if __name__ == "__main__":
         if getattr(args, "secure_boot_priv_key", False)
         else None
     )
-    logger.info(f"Switching to working directory: {config.INSTALLER_DIR}")
-    os.chdir(config.INSTALLER_DIR)
-    installer = LinuxInstaller.get_installer()
 
     if args.command == "install_driver":
         assert_root()
+        installer = LinuxInstaller.get_installer()
         installer.install_driver(
             secure_boot_public_key=secure_boot_public_key,
             secure_boot_private_key=secure_boot_private_key,
@@ -135,21 +250,27 @@ if __name__ == "__main__":
             installation_mode=args.installation_mode,
         )
     elif args.command == "verify_driver":
+        installer = LinuxInstaller.get_installer()
         if installer.verify_driver(verbose=True):
             sys.exit(0)
         else:
             sys.exit(1)
     elif args.command == "uninstall_driver":
         assert_root()
+        installer = LinuxInstaller.get_installer()
         installer.uninstall_driver()
     elif args.command == "install_cuda":
         assert_root()
+        installer = LinuxInstaller.get_installer()
         installer.install_cuda(
             ignore_no_gpu=args.ignore_no_gpu,
             installation_mode=args.installation_mode,
         )
     elif args.command == "verify_cuda":
+        installer = LinuxInstaller.get_installer()
         if installer.verify_cuda():
             sys.exit(0)
         else:
             sys.exit(1)
+    elif args.command == "build_image":
+        image_builder.Builder(args).build()

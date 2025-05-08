@@ -19,9 +19,7 @@ import tempfile
 import time
 import random
 import uuid
-import zipapp
 from pathlib import Path
-from multiprocessing import BoundedSemaphore
 from typing import Tuple
 
 import google.api_core.exceptions
@@ -29,71 +27,17 @@ import google.auth
 import pytest
 from google.cloud import iam_admin_v1
 from google.cloud import compute_v1
-from google.cloud import storage
-from google.cloud.storage.constants import STANDARD_STORAGE_CLASS
 
-PROJECT = google.auth.default()[1]
-
-INSTALLATION_TIMEOUT = 30 * 60  # 30 minutes
-
-GS_BUCKET_NAME = f"{PROJECT}-cuda-installer-tests"
-
-# Cloud project and family
-OPERATING_SYSTEMS = (
-    ("debian-cloud", "debian-11"),
-    ("debian-cloud", "debian-12"),
-    ("rhel-cloud", "rhel-8"),
-    ("rhel-cloud", "rhel-9"),
-    ("rocky-linux-cloud", "rocky-linux-8"),
-    ("rocky-linux-cloud", "rocky-linux-9"),
-    ("ubuntu-os-cloud", "ubuntu-2004-lts"),
-    ("ubuntu-os-cloud", "ubuntu-2204-lts"),
-    ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
+from tests.conftest import (
+    PROJECT,
+    INSTALLATION_TIMEOUT,
+    OPERATING_SYSTEMS,
+    MODES,
+    GPUS,
+    ZONES,
+    MACHINE_TYPES,
+    zipapp_gs_url,
 )
-
-MODES = ("binary", "repo")
-
-GPUS = {
-    # "L4": "nvidia-l4",
-    # "A100": "nvidia-tesla-a100",
-    # "P4": "nvidia-tesla-p4",
-    "T4": "nvidia-tesla-t4",
-    # "P100": "nvidia-tesla-p100",
-    # "V100": "nvidia-tesla-v100",
-}
-
-GPU_QUOTA_SEMAPHORES = {
-    "L4": BoundedSemaphore(8),
-    "A100": BoundedSemaphore(8),
-    "P4": BoundedSemaphore(1),
-    "T4": BoundedSemaphore(8),
-    "P100": BoundedSemaphore(1),
-    "V100": BoundedSemaphore(8),
-}
-
-ZONES = {
-    "L4": ("us-central1-a",),
-    "A100": ("us-central1-f",),
-    "P4": ("us-central1-a",),
-    "T4": (
-        "us-central1-b",
-        "europe-west2-a",
-        "us-west1-b",
-        "northamerica-northeast1-c",
-        "europe-west3-b",
-    ),
-    "P100": ("us-central1-c",),
-    "V100": ("us-central1-a",),
-}
-
-MACHINE_TYPES = {
-    "L4": "g2-standard-4",
-    "A100": "a2-highgpu-1g",
-    "P4": "n1-standard-8",
-    "T4": "n1-standard-16",
-    "P100": "n1-standard-8",
-    "V100": "n1-standard-8",
-}
 
 
 @pytest.fixture(scope="session")
@@ -120,38 +64,6 @@ def service_account():
     account = iam_admin_client.create_service_account(request)
 
     yield account.email
-
-
-@pytest.fixture(scope="session")
-def gs_bucket():
-    storage_client = storage.Client()
-
-    if GS_BUCKET_NAME in (b.name for b in storage_client.list_buckets()):
-        bucket = storage_client.get_bucket(GS_BUCKET_NAME)
-        yield bucket
-        return
-
-    # Need to create the bucket
-    bucket = storage_client.bucket(GS_BUCKET_NAME)
-    bucket.storage_class = STANDARD_STORAGE_CLASS
-    yield storage_client.create_bucket(bucket, location="us-central1")
-
-
-@pytest.fixture(scope="session")
-def zipapp_gs_url(gs_bucket: storage.Bucket, service_account: str):
-    """
-    Package the cuda_installer to a zipapp file and upload to a GS bucket.
-    """
-    file_name = f"cuda-installer-{uuid.uuid4().hex[:8]}.pyz"
-    with tempfile.NamedTemporaryFile(mode="wb+", suffix=".pyz") as pyz_file:
-        zipapp.create_archive("cuda_installer", pyz_file.file)
-        pyz_file.seek(0)
-        blob = gs_bucket.blob(file_name)
-        blob.upload_from_filename(pyz_file.name, if_generation_match=0)
-        blob.acl.reload()
-        blob.acl.user(service_account).grant_read()
-        blob.acl.save()
-        yield f"gs://{gs_bucket.name}/{blob.name}"
 
 
 @pytest.fixture(scope="module")
@@ -270,6 +182,12 @@ def test_install_driver_for_system(
         compute_v1.Scheduling.OnHostMaintenance.TERMINATE.name
     )
     instance.scheduling.preemptible = False
+    instance.scheduling.max_run_duration = compute_v1.Duration(
+        {"seconds": 3600}
+    )  # 1 hour
+    instance.scheduling.instance_termination_action = (
+        compute_v1.Scheduling.InstanceTerminationAction.DELETE.name
+    )
 
     # Set the startup script to install the drivers
     instance.metadata = compute_v1.Metadata()

@@ -26,6 +26,7 @@ from contextlib import contextmanager
 from enum import Enum, auto
 from typing import Optional, Union
 
+import config
 from config import (
     CUDA_TOOLKIT_URL,
     CUDA_TOOLKIT_GS_URI,
@@ -91,6 +92,8 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         self.kernel_version = self.run("uname -r", silent=True).stdout
         self.device_code = self.detect_gpu_device()
         self._file_download_verified = set()
+        logger.info(f"Switching to working directory: {config.INSTALLER_DIR}")
+        os.chdir(config.INSTALLER_DIR)
 
     @abc.abstractmethod
     def _add_nvidia_repo(self):

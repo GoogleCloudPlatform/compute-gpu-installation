@@ -29,8 +29,8 @@ requirements:
 
 ## Running the tool
 
-The `cuda_installer.pyz` script needs to be executed with root privileges
-(for example `sudo python3 cuda_installer.pyz`).
+The `cuda_installer.pyz` script needs to be executed with root privileges when installing 
+drivers or CUDA Toolkit (for example `sudo python3 cuda_installer.pyz`).
 
 ### Installing driver
 
@@ -76,3 +76,76 @@ for your Compute Engine instance. See [startup_script.sh](startup_script.sh) for
 startup script. Please note that the installation process will still require a reboot or two
 of your machine. You can assume that the process is finished by checking if 
 `/opt/google/cuda-installer/cuda_installation` file exists in the filesystem.
+
+## Preparing OS Images with Pre-installed Drivers/CUDA
+
+The `cuda_installer` tool includes a command to build new Google Compute Engine OS images 
+with NVIDIA drivers and (optionally) the CUDA Toolkit pre-installed. This is useful for 
+creating standardized environments or speeding up VM startup times.
+
+The command uses a temporary VM within your specified Google Cloud project and zone to 
+perform the installation steps on a fresh disk, which is then saved as a new custom image.
+
+### Basic Usage
+
+To build an image, you need to provide your Google Cloud project ID, a zone for the 
+temporary build VM, and a name for the final image.
+
+By default, this uses the `ubuntu-24` base image and installs both the driver and CUDA toolkit 
+using the 'repo' installation mode. You can customize the base OS using the `--base-image` 
+argument (e.g., `--base-image debian-12`, `--base-image rhel-9`).
+
+```bash
+python3 cuda_installer.pyz build_image --project $PROJECT --vm-zone $ZONE --base-image ubuntu-24 name_of_the_image
+```
+
+### Secure Boot Support
+
+If you intend to use the resulting image on VMs with Secure Boot enabled, the NVIDIA kernel modules 
+need to be signed during the image build process.
+
+**Option 1: Provide Existing Keys**
+
+If you already have a public/private key pair (MOK - Machine Owner Key) you want to use 
+for signing, provide the paths to the keys:
+
+```bash
+python3 cuda_installer.pyz build_image \
+    --project $PROJECT --vm-zone $ZONE \
+    --secure-boot-pub-key /path/to/public.der \
+    --secure-boot-priv-key /path/to/private.key \
+    --base-image ubuntu-24 name_of_the_image
+```
+
+
+**Option 2: Generate and Save Keys**
+
+If you don't provide keys, the tool will generate a new pair specifically for this image 
+build. By default, these keys are destroyed after the build. If you want to save these 
+generated keys, use the `--save-keys-path` argument:
+
+```bash
+python3 cuda_installer.pyz build_image \
+    --project $PROJECT --vm-zone $ZONE \
+    --save-keys-path /path/to/save/keys \
+    --base-image ubuntu-24 name_of_the_image
+```
+This will save `mok.der` and `mok.key` to the specified directory.
+
+### Other Options
+
+*   `--base-image <OS>`: Specify the base OS image. Supported options include `debian-12`, `rhel-8`, `rhel-9`, 
+        `rocky-8`, `rocky-9`, `ubuntu-22`, `ubuntu-24`. Defaults to `ubuntu-24`.
+*   `--driver-only`: Use this flag if you only want to install the NVIDIA driver and skip the CUDA Toolkit installation.
+*   `--installation-mode <MODE>`: Choose between `repo` (default) or `binary` installation methods.
+*   `--vm-type <TYPE>`: Specify the machine type for the temporary build VM (default: `e2-standard-8`).
+*   `--vm-disk-type <TYPE>`: Set the disk type for the build VM (e.g., `ssd`, `balanced`, `standard`). Default: `balanced`.
+*   `--vm-disk-size <SIZE_GB>`: Set the disk size in GB for the build VM (default: 100).
+*   `--family <FAMILY_NAME>`: Assign the created image to an image family.
+*   `--image-region <REGION>`: Specify the region or multi-region (e.g., `us`, `eu`) to store the final image. 
+        Defaults to the multi-region containing `--vm-zone`.
+*   `--skip-cleanup`: Prevents the deletion of the temporary build VM and its disk after image creation (useful for debugging).
+*   `--interactive`: The image preparation process will be paused before shutting down the build VM, and an SSH session 
+        will be opened. This way you can customize your future image, install additional packages, etc.
+*   `--custom-script <PATH_TO_CUSTOM_SCRIPT.sh>`: Provide a path to bash script that will be executed on the build VM 
+        before it's turned off. This way you can install additional packages and execute additional configuration steps.

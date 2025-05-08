@@ -10,4 +10,4 @@ manually on local developer machine. Required steps:
 3. Install required Python packages `pip install -Ur requirements.txt`
 4. Run tests using `pytest` command in the `/linux` directory. You can 
    speed up the process by using parallel execution with 
-   `pytest -n auto`. 
+   `pytest -n 32`. 
