@@ -21,16 +21,17 @@ from config import INSTALLER_DIR
 
 logger = logging.getLogger("GoogleCUDAInstaller")
 installer_log_file = pathlib.Path(INSTALLER_DIR / "installer.log")
-_file_handler = logging.FileHandler(installer_log_file, mode="a")
 
-# Without this, the installer can't be used by regular users to verify CUDA installation.
+# Set up the file handler only if running as root.
 if os.geteuid() == 0:
-    # Only root can change the log file permissions
+    _file_handler = logging.FileHandler(installer_log_file, mode="a")
     installer_log_file.touch(exist_ok=True)
     installer_log_file.chmod(0o666)
+    _file_handler.level = logging.DEBUG
+    logger.addHandler(_file_handler)
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s")
+    _file_handler.setFormatter(formatter)
 
-_file_handler.level = logging.DEBUG
-logger.addHandler(_file_handler)
 _sys_handler = logging.handlers.SysLogHandler(
     "/dev/log", facility=logging.handlers.SysLogHandler.LOG_LOCAL0
 )
@@ -41,8 +42,5 @@ stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.level = logging.INFO
 logger.addHandler(stdout_handler)
 logger.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s")
-_file_handler.setFormatter(formatter)
 
 __all__ = ["logger"]
