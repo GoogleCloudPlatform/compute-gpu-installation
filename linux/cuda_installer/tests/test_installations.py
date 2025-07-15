@@ -28,8 +28,10 @@ import pytest
 from google.cloud import iam_admin_v1
 from google.cloud import compute_v1
 
+from config import VERSION_MAP
 from tests.conftest import (
     PROJECT,
+    BRANCHES,
     INSTALLATION_TIMEOUT,
     OPERATING_SYSTEMS,
     MODES,
@@ -128,8 +130,12 @@ def read_ssh_pubkey(ssh_key: str) -> str:
     return f"{user}:{pub_key}"
 
 
+class RetryInDifferentZone(RuntimeError):
+    pass
+
+
 @pytest.mark.parametrize(
-    "opsys,gpu,mode", itertools.product(OPERATING_SYSTEMS, GPUS, MODES)
+    "opsys,gpu,mode,branch", itertools.product(OPERATING_SYSTEMS, GPUS, MODES, BRANCHES)
 )
 def test_install_driver_for_system(
     zipapp_gs_url: str,
@@ -138,14 +144,36 @@ def test_install_driver_for_system(
     opsys: Tuple[str, str],
     gpu: str,
     mode: str,
+    branch: str,
 ):
+    for _ in range(5):
+        zone = random.choice(ZONES[gpu])
+        try:
+            _test_setup(zipapp_gs_url, service_account, ssh_key, opsys, gpu, mode, branch, zone)
+        except RetryInDifferentZone:
+            continue
+        else:
+            break
+    else:
+        pytest.fail("Couldn't find a zone to start the instance in.")
+
+
+def _test_setup(zipapp_gs_url: str,
+    service_account: str,
+    ssh_key: str,
+    opsys: Tuple[str, str],
+    gpu: str,
+    mode: str,
+    branch: str,
+    zone: str):
     """
-    Run the installation test for given operating system and GPU card.
-    """
+        Run the installation test for given operating system and GPU card.
+        """
     if mode == "repo" and opsys[1] == "debian-11":
-        # Repo mode doesn't work with Debian 11.
-        pytest.skip()
-    zone = random.choice(ZONES[gpu])
+        pytest.skip("Repo mode doesn't work with Debian 11.")
+
+    if mode == "repo" and opsys[1] == "debian-12" and branch == "prod":
+        pytest.skip("Repo mode for prod branch doesn't work on Debian 12.")
 
     op_sys_image = get_image_from_family(*opsys)
     disks = [_get_boot_disk(op_sys_image.self_link, zone)]
@@ -165,7 +193,7 @@ def test_install_driver_for_system(
 
     instance = compute_v1.Instance()
     instance.machine_type = f"zones/{zone}/machineTypes/{MACHINE_TYPES[gpu]}"
-    instance_name = f"gpu-test-{opsys[1]}-{gpu}-{mode}-".lower() + uuid.uuid4().hex[:10]
+    instance_name = f"gpu-test-{opsys[1]}-{gpu}-{mode}-{branch}-".lower() + uuid.uuid4().hex[:10]
     instance.name = instance_name
     instance.disks = disks
     instance.guest_accelerators = [accelerator]
@@ -195,7 +223,7 @@ def test_install_driver_for_system(
     meta_item.key = "startup-script"
     with open(Path(__file__).parent / "startup_script.sh") as script:
         meta_item.value = script.read().format(
-            GS_INSTALLER_PATH=zipapp_gs_url, MODE=mode
+            GS_INSTALLER_PATH=zipapp_gs_url, MODE=mode, BRANCH=branch
         )
     ssh_item = compute_v1.Items()
     ssh_item.key = "ssh-keys"
@@ -226,6 +254,9 @@ def test_install_driver_for_system(
                 operation.error,
                 file=sys.stderr,
             )
+            if operation.error.errors[0].code == 'ZONE_RESOURCE_POOL_EXHAUSTED_WITH_DETAILS':
+                # Need to retry in different zone.
+                raise RetryInDifferentZone()
             raise RuntimeError(operation.error)
 
         if operation.warnings:
@@ -241,7 +272,7 @@ def test_install_driver_for_system(
                 for msg in msgs:
                     print(msg, file=sys.stderr)
 
-        _test_body(zone, instance_name, gpu, ssh_key)
+        _test_body(zone, instance_name, gpu, ssh_key, branch)
     finally:
         try:
             # print("This is where I'd delete the instance, but we keep it for debugging.")
@@ -254,7 +285,7 @@ def test_install_driver_for_system(
             pass
 
 
-def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
+def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: str):
     """
     Execute the proper checks to see if the instance got the GPU drivers properly installed.
     """
@@ -263,7 +294,7 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
     time.sleep(30)  # Let the instance start
     tries = 0
     while time.time() - start_time <= INSTALLATION_TIMEOUT:
-        time.sleep(10)
+        time.sleep(30)
         try:
             tries += 1
             process = subprocess.run(
@@ -282,7 +313,7 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                 stderr=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 text=True,
-                timeout=10,
+                timeout=20,
             )
         except subprocess.TimeoutExpired as err:
             continue
@@ -311,7 +342,6 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
                     text=True,
                     timeout=600,
                 )
-                print("process.stdout: ", process.stdout)
                 if "CMake 3.20 or higher is required." in process.stdout:
                     pytest.skip(
                         "CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked)."
@@ -339,11 +369,12 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str):
             "--ssh-key-file",
             ssh_key,
             "--command",
-            "nvidia-smi -L",
+            "nvidia-smi",
         ],
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
         timeout=60,
     )
+    assert f"driver version: {VERSION_MAP[branch]['driver']['version'].split('.')[0]}" in process.stdout.lower()
     assert gpu.lower() in process.stdout.lower()

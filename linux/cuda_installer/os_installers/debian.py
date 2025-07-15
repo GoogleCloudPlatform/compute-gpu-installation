@@ -16,15 +16,15 @@ import pathlib
 import re
 from typing import Optional
 
-from decorators import checkpoint_decorator
-from logger import logger
-from os_installers import LinuxInstaller, RebootRequired, System
 from config import (
     NVIDIA_DEB_REPO_KEYRING_URL,
     NVIDIA_DEB_REPO_KEYRING_GS_URI,
     NVIDIA_KEYRING_SHA256_SUMS,
-    CUDA_TOOLKIT_VERSION_SHORT,
+    VERSION_MAP,
 )
+from decorators import checkpoint_decorator
+from logger import logger
+from os_installers import LinuxInstaller, RebootRequired, System
 
 
 class DebianInstaller(LinuxInstaller):
@@ -112,16 +112,23 @@ class DebianInstaller(LinuxInstaller):
             f"linux-headers-cloud-amd64"
         )
 
+    def _repo_uninstall_driver(self):
+        self.run("apt-get remove -y cuda-drivers")
+
     def _repo_install_driver(
         self,
         secure_boot_public_key: Optional[pathlib.Path] = None,
         secure_boot_private_key: Optional[pathlib.Path] = None,
+        branch: str = "prod"
     ):
         system, version = self._detect_linux_distro()
         assert system == System.Debian
 
         if version == "11":
             raise RuntimeError("The 'repo' mode is not available for Debian 11.")
+
+        if branch == "prod":
+            raise RuntimeError("The 'prod' branch is only available for binary installations on Debian.")
 
         if secure_boot_public_key and secure_boot_private_key:
             if secure_boot_public_key.exists() and secure_boot_private_key.exists():
@@ -131,17 +138,25 @@ class DebianInstaller(LinuxInstaller):
                 )
 
         try:
+            driver_version = VERSION_MAP[branch]["driver"]["version"].split(".")[0]
             logger.info("Installing GPU driver...")
-            self.run("apt-get install -yq cuda-drivers")
+            self.run(f"apt-get install -yq cuda-drivers-{driver_version}")
+            self.run(f"apt-mark hold cuda-drivers-{driver_version}")
         finally:
             if secure_boot_public_key and secure_boot_private_key:
                 self.remove_custom_dkms_signing_keys()
 
-    def _install_cuda_repo(self):
+    def _install_cuda_repo(self, branch: str):
         """
         Install CUDA Toolkit using DNF.
         """
+        system, version = self._detect_linux_distro()
+
+        if version == "lts":
+            raise RuntimeError("The 'lts' branch is not available in repo installation mode.")
+
         self._add_nvidia_repo()
-        major, minor = CUDA_TOOLKIT_VERSION_SHORT.split(".")
-        logger.info(f"Installing CUDA Toolkit version {CUDA_TOOLKIT_VERSION_SHORT}")
+        major = VERSION_MAP[branch]["cuda"]["major"]
+        minor = VERSION_MAP[branch]["cuda"]["minor"]
+        logger.info(f"Installing CUDA Toolkit version ({major}.{minor}))")
         self.run(f"apt-get install -yq cuda-toolkit-{major}-{minor}")

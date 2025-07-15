@@ -25,6 +25,7 @@ from google.cloud.storage.constants import STANDARD_STORAGE_CLASS
 PROJECT = google.auth.default()[1]
 INSTALLATION_TIMEOUT = 30 * 60  # 30 minutes
 GS_BUCKET_NAME = f"{PROJECT}-cuda-installer-tests"
+
 OPERATING_SYSTEMS = (
     ("debian-cloud", "debian-11"),
     ("debian-cloud", "debian-12"),
@@ -32,10 +33,11 @@ OPERATING_SYSTEMS = (
     ("rhel-cloud", "rhel-9"),
     ("rocky-linux-cloud", "rocky-linux-8"),
     ("rocky-linux-cloud", "rocky-linux-9"),
-    ("ubuntu-os-cloud", "ubuntu-2004-lts"),
     ("ubuntu-os-cloud", "ubuntu-2204-lts"),
     ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
 )
+
+BRANCHES = ("prod", "nfb")
 MODES = ("binary", "repo")
 GPUS = {
     # "L4": "nvidia-l4",
@@ -58,11 +60,19 @@ ZONES = {
     "A100": ("us-central1-f",),
     "P4": ("us-central1-a",),
     "T4": (
+        "asia-southeast1-a",
+        "asia-southeast1-b",
+        "asia-southeast1-c",
         "europe-west1-b",
+        "europe-west1-c",
+        "europe-west1-d",
         "europe-west2-a",
+        "europe-west2-b",
         "europe-west3-b",
         "europe-west4-c",
+        "us-central1-a",
         "us-central1-b",
+        "us-central1-c",
         "us-east1-d",
         "us-east4-b",
         "us-west1-b",

@@ -22,6 +22,22 @@ try:
 except PermissionError:
     pass
 
+VERSION = 'v1.5.0'
+
+VERSION_MAP = {
+    'prod': {
+        'driver': {'version': '570.158.01', 'hash': '47f4cc9ad07bf718d0dce8dbfc0045cd36aced699712c7e8417f85fb87d918eb'},
+        'cuda': {'major': '12','minor': '8', 'patch': '1', 'driver': '570.124.06',
+                 'hash': '228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797',
+                 'samples': '12.8', 'samples_hash': 'fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d'},
+    },
+    'nfb': {
+        'driver': {'version': '575.57.08', 'hash': '2aa701dac180a7b20a6e578cccd901ded8d44e57d60580f08f9d28dd1fffc6f2'},
+        'cuda': {'major': '12', 'minor': '9', 'patch': '1', 'driver': '575.57.08',
+                 'hash': '0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a',
+                 'samples': '12.8', 'samples_hash': 'fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d'},
+    },
+}
 
 # Check what multi-region should be used to download stuff
 _region_to_multi_map = {
@@ -54,20 +70,12 @@ except urllib.error.URLError:
     MULTIREGION = "us"
 
 
-LATEST_DRIVER_VERSION = "575.51.03"
-LATEST_DRIVER_URL = f"https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
-LATEST_DRIVER_GS_URI = f"gs://compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{LATEST_DRIVER_VERSION}.run"
-LATEST_DRIVER_SHA256_SUM = (
-    "db563ec94e413e25a65bb92c36a06970c4b27659102d3ee806f1b06b8c19b6d9"
-)
 
-CUDA_TOOLKIT_VERSION = "12.9.0"
-CUDA_TOOLKIT_VERSION_SHORT = "12.9"
-CUDA_TOOLKIT_URL = f"https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_TOOLKIT_VERSION}_{LATEST_DRIVER_VERSION}_linux.run"
-CUDA_TOOLKIT_GS_URI = f"gs://compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_TOOLKIT_VERSION}_{LATEST_DRIVER_VERSION}_linux.run"
-CUDA_TOOLKIT_SHA256_SUM = (
-    "bbce2b760fe2096ca1c86f729e03bf377c1519add7b2755ecc4e9b0a9e07ee43"
-)
+DRIVER_URL = "https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
+DRIVER_GS_URI = "gs://compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
+
+CUDA_TOOLKIT_URL = "https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_MAJOR}.{CUDA_MINOR}.{CUDA_PATCH}_{CUDA_DRIVER_VERSION}_linux.run"
+CUDA_TOOLKIT_GS_URI = "gs://compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_MAJOR}.{CUDA_MINOR}.{CUDA_PATCH}_{CUDA_DRIVER_VERSION}_linux.run"
 
 # Repo install settings
 
@@ -98,17 +106,12 @@ NVIDIA_KEYRING_SHA256_SUMS = {
 }
 
 # Hosted on GitHub: https://github.com/NVIDIA/cuda-samples
-CUDA_SAMPLES_VERSION = "12.8"
-
-CUDA_SAMPLES_URL = f"https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/cuda_samples/v{CUDA_SAMPLES_VERSION}.tar.gz"
-CUDA_SAMPLES_GS_URI = f"gs://compute-gpu-installation-{MULTIREGION}/cuda_samples/v{CUDA_SAMPLES_VERSION}.tar.gz"
-CUDA_SAMPLES_SHA256_SUM = (
-    "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d"
-)
+CUDA_SAMPLES_URL = "https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/cuda_samples/v{CUDA_SAMPLES_VERSION}.tar.gz"
+CUDA_SAMPLES_GS_URI = "gs://compute-gpu-installation-{MULTIREGION}/cuda_samples/v{CUDA_SAMPLES_VERSION}.tar.gz"
 
 CUDA_PROFILE_FILENAME = pathlib.Path("/etc/profile.d/google_cuda_install.sh")
-CUDA_BIN_FOLDER = f"/usr/local/cuda-{CUDA_TOOLKIT_VERSION_SHORT}/bin"
-CUDA_LIB_FOLDER = f"/usr/local/cuda-{CUDA_TOOLKIT_VERSION_SHORT}/lib64"
+CUDA_BIN_FOLDER = "/usr/local/cuda-{CUDA_MAJOR}.{CUDA_MINOR}/bin"
+CUDA_LIB_FOLDER = "/usr/local/cuda-{CUDA_MAJOR}.{CUDA_MINOR}/lib64"
 
 NVIDIA_PERSISTANCED_INSTALLER = (
     "/usr/share/doc/NVIDIA_GLX-1.0/samples/nvidia-persistenced-init.tar.bz2"

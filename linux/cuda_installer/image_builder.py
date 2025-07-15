@@ -61,6 +61,8 @@ class Builder:
         self.image_region = args.image_region or self.multiregion
         self.image_family = args.family
         self.installation_mode = args.installation_mode
+        self.branch = args.installation_branch
+        assert self.branch in ("nfb", "prod")
         self.skip_cleanup = args.skip_cleanup
         self.interactive = args.interactive
 
@@ -438,7 +440,7 @@ class Builder:
                 self.build_instance_name,
                 f"sudo python3 cuda_installer.pyz install_driver "
                 f"--secure-boot-pub-key=public.der --secure-boot-priv-key=private.key "
-                f"--installation-mode={self.installation_mode} --ignore-no-gpu",
+                f"--installation-mode={self.installation_mode} --installation-branch={self.branch} --ignore-no-gpu",
             )
             # Wait for the VM to restart
             time.sleep(60)
@@ -448,7 +450,8 @@ class Builder:
             while "Rebooting now." in out:
                 out = self.execute_command_over_ssh(
                     self.build_instance_name,
-                    "sudo python3 cuda_installer.pyz install_cuda --ignore-no-gpu",
+                    f"sudo python3 cuda_installer.pyz install_cuda "
+                    f"--installation-mode={self.installation_mode} --installation-branch={self.branch} --ignore-no-gpu",
                 )
                 # Wait for the VM to restart
                 time.sleep(30)

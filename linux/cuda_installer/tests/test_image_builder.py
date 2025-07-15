@@ -24,21 +24,21 @@ import pytest
 
 os.environ["PYTHONPATH"] = f"{os.getenv('PYTHONPATH')}:{os.getcwd()}"
 
-from tests.conftest import PROJECT, MODES, ZONES, zipapp_file_path
+from tests.conftest import PROJECT, MODES, BRANCHES, ZONES, zipapp_file_path
 from image_builder import BASE_IMAGES_MAP
 
 BUILD_ZONE = "europe-west4-c"
 
 
 @pytest.mark.parametrize(
-    "mode,base_os", itertools.product(MODES, BASE_IMAGES_MAP.keys())
+    "mode,branch,base_os", itertools.product(MODES, BRANCHES, BASE_IMAGES_MAP.keys())
 )
-def test_image_building(zipapp_file_path: str, mode: str, base_os: str):
+def test_image_building(zipapp_file_path: str, mode: str, branch: str, base_os: str):
     """
     Execute the cuda_installer.pyz image builder to prepare an image, them make a VM from it and see if it works.
     """
     test_id = uuid.uuid4().hex[:8]
-    test_image_name = f"test-image{base_os}-{mode}-{test_id}"
+    test_image_name = f"test-image{base_os}-{mode}-{branch}-{test_id}"
     process = subprocess.run(
         [
             "python",
@@ -56,6 +56,8 @@ def test_image_building(zipapp_file_path: str, mode: str, base_os: str):
             "1024",
             "--installation-mode",
             mode,
+            "--installation-branch",
+            branch,
             "--custom-script",
             str(pathlib.Path(__file__).parent.absolute() / "test_custom_script.sh"),
             "--base-image",

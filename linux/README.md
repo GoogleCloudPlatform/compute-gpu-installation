@@ -8,12 +8,29 @@ section of this repository.
 The `install_gpu_driver.py` script is still available to not break existing setups,
 but is considered deprecated and should not be used anymore.
 
-The tool supports following operating systems (x86_64/amd64 architecture):
+## OS Support
 
-* Debian: versions 10, 11 and 12
+The tool supports the following operating systems (x86_64/amd64 architecture):
+
+* Debian: versions 11 and 12
 * RHEL: versions 8 and 9
 * Rocky: version 8 and 9
-* Ubuntu: version 20, 22 and 24
+* Ubuntu: version 22 and 24
+
+Some installation methods and branches are unavailable on some of the operating systems.
+
+|           | Binary | Repository |
+|-----------|--------|------------|
+| Debian 11 | ✓      | ❌          |
+| Debian 12 | ✓      | Only NFB²  |
+| RHEL 11   | ✓      | ✓          |
+| RHEL 11   | ✓      | ✓          |
+| Rocky 11  | ✓      | ✓          |
+| Rocky 11  | ✓      | ✓          |
+| Ubuntu 11 | ✓      | ✓          |
+| Ubuntu 11 | ✓      | ✓          |
+
+² - NFB = New feature branch
 
 Note: Just because an operating system is not listed as supported by this tool,  
 it doesn't mean that it's impossible to install NVIDIA drivers on it. You should check and
@@ -25,14 +42,41 @@ The system on which you want to run the script needs to meet the following
 requirements:
 
 *   Python interpreter in version 3.6 or newer installed.
-*   Access to Google Cloud Storage (the script needs to download the driver and CUDA tookit).
+*   Access to Google Cloud Storage (the script needs to download the driver and CUDA toolkit).
+
+## Driver branches
+
+NVIDIA releases their GPU drivers in [three branches](https://docs.nvidia.com/datacenter/tesla/drivers/#driver-lifecycle). To quote from their documentation:
+
+* **Long-Term Support** - branch releases will receive bug updates and critical security updates, 
+  on a reasonable effort basis, through minor releases during the 3 years that they are supported.
+* **Production** - branch is qualified for use in production for enterprise/data center GPUs. Bug 
+  fixes and security updates are provided for up to 1 year.
+* **New feature (NFB)** - branch is targeted towards early adopters who want to evaluate new features 
+  (for example, new CUDA APIs). New driver branch is released approximately every quarter.
+
+The `cuda_installer.pyz` tool allows you to pick the driver branch you want to install. Only 
+production and new feature branches are currently supported. To specify the branch you want to
+install use the `--installation-branch <prod|nfb>` flag. If the flag is omitted, production
+branch is used by default.
+
+## Driver versions
+
+This table shows the versions of drivers installed by different versions of the tool. The repository
+installation method will always match the major version of the drivers and CUDA Toolkit installed by
+the binary version.
+
+| release  | new feature branch       | prod branch               |
+|----------|--------------------------|---------------------------|
+| v1.5.0   | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) |
+
 
 ## Running the tool
 
 The `cuda_installer.pyz` script needs to be executed with root privileges when installing 
 drivers or CUDA Toolkit (for example `sudo python3 cuda_installer.pyz`).
 
-### Installing driver
+### Installing the driver
 
 To install NVIDIA driver use `sudo python3 cuda_installer.pyz install_driver`. The script
 will update your system, lock kernel updates and install the driver. **The process will most 
@@ -63,7 +107,7 @@ to verify that everything is configured properly.
 
 ## Script output
 
-The installation tool logs its outputs to `/opt/google/cuda-installer/` folder.
+The installation tool logs its outputs to `/opt/google/cuda-installer/` folder when run as root.
 If you are facing any problems with the installation, this should be the first
 place to check for any errors. When asking for support, you will be asked to
 provide the log files from this folder.
@@ -138,6 +182,7 @@ This will save `mok.der` and `mok.key` to the specified directory.
         `rocky-8`, `rocky-9`, `ubuntu-22`, `ubuntu-24`. Defaults to `ubuntu-24`.
 *   `--driver-only`: Use this flag if you only want to install the NVIDIA driver and skip the CUDA Toolkit installation.
 *   `--installation-mode <MODE>`: Choose between `repo` (default) or `binary` installation methods.
+*   `--installation-branch <BRANCH>`: Choose between `prod` (production branch) and `nfb` (new feature branch). Default: `prod`.
 *   `--vm-type <TYPE>`: Specify the machine type for the temporary build VM (default: `e2-standard-8`).
 *   `--vm-disk-type <TYPE>`: Set the disk type for the build VM (e.g., `ssd`, `balanced`, `standard`). Default: `balanced`.
 *   `--vm-disk-size <SIZE_GB>`: Set the disk size in GB for the build VM (default: 100).

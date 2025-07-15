@@ -30,20 +30,14 @@ import config
 from config import (
     CUDA_TOOLKIT_URL,
     CUDA_TOOLKIT_GS_URI,
-    CUDA_TOOLKIT_SHA256_SUM,
-    CUDA_TOOLKIT_VERSION,
-    LATEST_DRIVER_VERSION,
-    LATEST_DRIVER_URL,
-    LATEST_DRIVER_GS_URI,
-    LATEST_DRIVER_SHA256_SUM,
+    DRIVER_URL,
+    DRIVER_GS_URI,
     CUDA_PROFILE_FILENAME,
     CUDA_BIN_FOLDER,
     CUDA_LIB_FOLDER,
     NVIDIA_PERSISTANCED_INSTALLER,
     CUDA_SAMPLES_URL,
-    CUDA_SAMPLES_SHA256_SUM,
     CUDA_SAMPLES_GS_URI,
-    CUDA_SAMPLES_VERSION,
     INSTALLER_DIR,
 )
 from decorators import checkpoint_decorator
@@ -93,7 +87,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         self.device_code = self.detect_gpu_device()
         self._file_download_verified = set()
         logger.info(f"Switching to working directory: {config.INSTALLER_DIR}")
-        os.chdir(config.INSTALLER_DIR)
+        try:
+            os.chdir(config.INSTALLER_DIR)
+        except FileNotFoundError:
+            logger.warning(f"Couldn't switch working directory to {config.INSTALLER_DIR}. Running in {os.getcwd()}.")
 
     @abc.abstractmethod
     def _add_nvidia_repo(self):
@@ -164,12 +161,13 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         secure_boot_private_key: Optional[pathlib.Path] = None,
         ignore_no_gpu: bool = False,
         installation_mode: str = "repo",
+        branch: str = "prod",
     ):
         """
         Downloads the installation package and installs the driver. It also handles installation of
-        drive prerequisites and will trigger a reboot on first run, when those prerequisites are installed.
+        drive prerequisites and will trigger a reboot on the first run when those prerequisites are installed.
 
-        On second run, it will proceed to download proper installer and install the driver. When it's done, `nvidia-smi`
+        On the second run, it will proceed to download proper installer and install the driver. When it's done, `nvidia-smi`
         should be available in the system and the drivers are installed.
 
         It also triggers kernel packages lock in the system, so the driver is not broken by auto-updates.
@@ -178,7 +176,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             logger.info("GPU driver already installed.")
             return
 
-        self.assert_correct_mode(installation_mode)
+        self.assert_correct_mode(installation_mode, branch)
 
         logger.info("Installing prerequisite packages and updating kernel...")
         try:
@@ -188,19 +186,20 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         if installation_mode == "binary":
             self._binary_install_driver(
-                secure_boot_public_key, secure_boot_private_key, ignore_no_gpu
+                secure_boot_public_key, secure_boot_private_key, ignore_no_gpu, branch
             )
         else:
             self._add_nvidia_repo()
-            self._repo_install_driver(secure_boot_public_key, secure_boot_private_key)
+            self._repo_install_driver(secure_boot_public_key, secure_boot_private_key, branch)
 
     def _binary_install_driver(
         self,
         secure_boot_public_key: Optional[pathlib.Path] = None,
         secure_boot_private_key: Optional[pathlib.Path] = None,
         ignore_no_gpu: bool = False,
+        branch: str = "prod",
     ):
-        installer_path = self.download_latest_driver_installer()
+        installer_path = self.download_driver_installer(branch)
 
         logger.info("Installing GPU drivers for your device...")
         if (
@@ -232,7 +231,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         self,
         secure_boot_public_key: Optional[pathlib.Path] = None,
         secure_boot_private_key: Optional[pathlib.Path] = None,
+        branch: str = "prod",
     ):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _repo_uninstall_driver(self):
         raise NotImplementedError
 
     def uninstall_driver(self):
@@ -244,7 +248,13 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             logger.info("GPU driver not found.")
             return
 
-        installer_path = self.download_latest_driver_installer()
+        mode, branch = self.get_installation_mode()
+
+        if mode == 'repo':
+            self._repo_uninstall_driver()
+            return
+
+        installer_path = self.download_driver_installer(branch)
 
         logger.info("Starting uninstallation...")
         self.run(f"sh {installer_path} -s --uninstall", check=True)
@@ -271,53 +281,53 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         "cuda_installation", "CUDA toolkit already marked as installed."
     )
     def _install_cuda(
-        self, ignore_no_gpu: bool = False, installation_mode: str = "repo"
+        self, ignore_no_gpu: bool = False, installation_mode: str = "repo", branch: str = "prod",
     ):
         """
         This is the method to install the CUDA Toolkit. It will install the toolkit and execute post-installation
         configuration in the operating system, to make it available for all users.
         """
-        self.assert_correct_mode(installation_mode)
+        self.assert_correct_mode(installation_mode, branch)
 
         if not (self.verify_driver() or ignore_no_gpu):
             logger.info(
                 "CUDA installation requires GPU driver to be installed first. "
                 "Attempting to install GPU driver now."
             )
-            self.install_driver(installation_mode=installation_mode)
+            self.install_driver(installation_mode=installation_mode, branch=branch)
 
         if installation_mode == "binary":
-            self._install_cuda_binary()
+            self._install_cuda_binary(branch)
         else:
             self._add_nvidia_repo()
-            self._install_cuda_repo()
+            self._install_cuda_repo(branch)
 
         logger.info("Executing post-installation actions...")
-        self.cuda_postinstallation_actions()
+        self.cuda_postinstallation_actions(branch)
         logger.info("CUDA post-installation actions completed!")
         raise RebootRequired
 
-    def _install_cuda_binary(self):
+    def _install_cuda_binary(self, branch: str):
         logger.info("Downloading CUDA Toolkit package...")
-        installer_path = self.download_cuda_toolkit_installer()
+        installer_path = self.download_cuda_toolkit_installer(branch)
 
         logger.info("Installing CUDA toolkit...")
         self.run(f"sh {installer_path} --silent --toolkit", check=True)
         logger.info("CUDA toolkit installation completed!")
 
     @abc.abstractmethod
-    def _install_cuda_repo(self):
+    def _install_cuda_repo(self, branch: str):
         pass
 
     def install_cuda(
-        self, ignore_no_gpu: bool = False, installation_mode: str = "repo"
+        self, ignore_no_gpu: bool = False, installation_mode: str = "repo", branch: str = "prod"
     ):
         try:
-            self._install_cuda(ignore_no_gpu, installation_mode)
+            self._install_cuda(ignore_no_gpu, installation_mode, branch)
         except RebootRequired:
             self.reboot()
 
-    def cuda_postinstallation_actions(self):
+    def cuda_postinstallation_actions(self, branch: str):
         """
         Perform required and suggested post-installation actions:
         * set environment variables
@@ -326,23 +336,30 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         More info: https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions
         """
-        os.environ["PATH"] = f"{CUDA_BIN_FOLDER}:{os.environ['PATH']}"
+        cuda_major = config.VERSION_MAP[branch]["cuda"]["major"]
+        cuda_minor = config.VERSION_MAP[branch]["cuda"]["minor"]
+        cuda_patch = config.VERSION_MAP[branch]["cuda"]["patch"]
+
+        cuda_bin_folder = CUDA_BIN_FOLDER.format(CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor)
+        cuda_lib_folder = CUDA_LIB_FOLDER.format(CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor)
+
+        os.environ["PATH"] = f"{cuda_bin_folder}:{os.environ['PATH']}"
         if "LD_LIBRARY_PATH" in os.environ:
             os.environ["LD_LIBRARY_PATH"] = (
-                f"{CUDA_LIB_FOLDER}:{os.environ['LD_LIBRARY_PATH']}"
+                f"{cuda_lib_folder}:{os.environ['LD_LIBRARY_PATH']}"
             )
         else:
-            os.environ["LD_LIBRARY_PATH"] = CUDA_LIB_FOLDER
+            os.environ["LD_LIBRARY_PATH"] = cuda_lib_folder
 
         with CUDA_PROFILE_FILENAME.open("w") as profile:
             logger.info(f"Creating {CUDA_PROFILE_FILENAME} file...")
             profile.write(
                 "# Configuring CUDA toolkit. File created by Google CUDA installation manager.\n"
             )
-            profile.write("export PATH=" + CUDA_BIN_FOLDER + "${PATH:+:${PATH}}\n")
+            profile.write("export PATH=" + cuda_bin_folder + "${PATH:+:${PATH}}\n")
             profile.write(
                 "export LD_LIBRARY_PATH="
-                + CUDA_LIB_FOLDER
+                + cuda_lib_folder
                 + "${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}\n"
             )
 
@@ -383,6 +400,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         """
         Make sure that CUDA Toolkit is properly installed by compiling and executing CUDA code samples.
         """
+        branch = self.get_installation_mode()[1]
+        cuda_samples_version = config.VERSION_MAP[branch]["cuda"]["samples"]
+        cuda_samples_url = CUDA_SAMPLES_URL.format(MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version)
+        cuda_samples_gs_uri = CUDA_SAMPLES_GS_URI.format(MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version)
+        cuda_samples_hash = config.VERSION_MAP[branch]["cuda"]["samples_hash"]
+
         logger.info("Verifying CUDA installation...")
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dir = pathlib.Path(temp_dir)
@@ -391,14 +414,14 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                     f"Using {temp_dir} to download, build and execute code samples."
                 )
                 samples_tar = self.download_file(
-                    CUDA_SAMPLES_URL, CUDA_SAMPLES_SHA256_SUM, CUDA_SAMPLES_GS_URI
+                    cuda_samples_url, cuda_samples_hash, cuda_samples_gs_uri
                 )
                 self.run(f"tar -xf {samples_tar.name}")
-                with chdir(temp_dir / f"cuda-samples-{CUDA_SAMPLES_VERSION}"):
-                    self.run("cmake .", check=True)
+                with chdir(temp_dir / f"cuda-samples-{cuda_samples_version}"):
+                    self.run("cmake .", check=False)
                 with chdir(
                     temp_dir
-                    / f"cuda-samples-{CUDA_SAMPLES_VERSION}/Samples/1_Utilities/deviceQuery"
+                    / f"cuda-samples-{cuda_samples_version}/Samples/1_Utilities/deviceQuery"
                 ):
                     self.run("make", check=True)
                     dev_query = self.run("./deviceQuery", check=True)
@@ -409,7 +432,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                         return False
                 with chdir(
                     temp_dir
-                    / f"cuda-samples-{CUDA_SAMPLES_VERSION}/Samples/1_Utilities/bandwidthTest"
+                    / f"cuda-samples-{cuda_samples_version}/Samples/1_Utilities/bandwidthTest"
                 ):
                     self.run("make", check=True)
                     bandwidth = self.run("./bandwidthTest", check=True)
@@ -477,7 +500,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 for line in proc.stderr.readlines():
                     if not silent:
                         logger.warning(line.decode().strip())
-                    stdout.append(line.decode().strip())
+                    stderr.append(line.decode().strip())
 
             while proc.poll() is None:
                 # While the process is running, we capture the output
@@ -497,10 +520,11 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         if check and proc.returncode:
             logger.error("Command exited with non-zero code.")
-            logger.error("Stdout:\n" + proc.stdout.decode())
-            logger.error("Stderr:\n" + proc.stderr.decode())
+            logger.error("Stdout:\n" + "\n".join(stdout))
+            logger.error("Stderr:\n" + "\n".join(stderr))
             logger.error("--------------------------------")
-            raise subprocess.SubprocessError("Command exited with non-zero code")
+            if check:
+                raise subprocess.SubprocessError("Command exited with non-zero code")
 
         return subprocess.CompletedProcess(
             command, proc.returncode, stdout="\n".join(stdout), stderr="\n".join(stderr)
@@ -567,16 +591,30 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         else:
             return None
 
-    def download_cuda_toolkit_installer(self) -> pathlib.Path:
-        logger.info(f"Downloading CUDA installation kit ({CUDA_TOOLKIT_VERSION})...")
+    def download_cuda_toolkit_installer(self, branch: str) -> pathlib.Path:
+
+        cuda_major = config.VERSION_MAP[branch]["cuda"]["major"]
+        cuda_minor = config.VERSION_MAP[branch]["cuda"]["minor"]
+        cuda_patch = config.VERSION_MAP[branch]["cuda"]["patch"]
+        driver_version = config.VERSION_MAP[branch]["cuda"]["driver"]
+        logger.info(f"Downloading CUDA installation kit for {branch} branch ({cuda_major}.{cuda_minor}.{cuda_patch})...")
+
         return self.download_file(
-            CUDA_TOOLKIT_URL, CUDA_TOOLKIT_SHA256_SUM, CUDA_TOOLKIT_GS_URI
+            CUDA_TOOLKIT_URL.format(MULTIREGION=config.MULTIREGION, CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor,
+                                    CUDA_PATCH=cuda_patch, CUDA_DRIVER_VERSION=driver_version),
+            config.VERSION_MAP[branch]["cuda"]["hash"],
+            CUDA_TOOLKIT_GS_URI.format(MULTIREGION=config.MULTIREGION, CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor,
+                                       CUDA_PATCH=cuda_patch, CUDA_DRIVER_VERSION=driver_version)
         )
 
-    def download_latest_driver_installer(self) -> pathlib.Path:
-        logger.info(f"Downloading latest driver installer ({LATEST_DRIVER_VERSION})...")
+    def download_driver_installer(self, branch: str) -> pathlib.Path:
+        driver_version = config.VERSION_MAP[branch]["driver"]["version"]
+        logger.info(f"Downloading driver for {branch} branch ({driver_version})...")
+
         return self.download_file(
-            LATEST_DRIVER_URL, LATEST_DRIVER_SHA256_SUM, LATEST_DRIVER_GS_URI
+            DRIVER_URL.format(MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version),
+            config.VERSION_MAP[branch]["driver"]["hash"],
+            DRIVER_GS_URI.format(MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version)
         )
 
     def download_file(
@@ -603,9 +641,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         if not file_path.exists():
             if gsutil_available and gs_uri:
-                self.run(f"gsutil cp {gs_uri} .", silent=True)
+                self.run(f"gsutil cp {gs_uri} .", silent=True, check=True)
             else:
-                self.run(f"curl -fSsL -O {url}")
+                self.run(f"curl -fSsL -O {url}", check=True)
 
         checksum = self.run(f"sha256sum {file_path}").stdout.strip().split()[0]
         if checksum != sha256sum:
@@ -684,24 +722,43 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             )
 
     @staticmethod
-    def assert_correct_mode(mode: str):
+    def assert_correct_mode(mode: str, branch: str):
         """
-        Check if the previously used installation method is the same as current one. If it's not, abort the process and
-        display a message about the problem.
+        Check if the previously used installation method is the same as the current one. If it's not, abort the process
+        and display a message about the problem.
+        """
+        mode_file = INSTALLER_DIR / "mode"
+        mode_text = f"{mode} {branch}"
+
+        assert mode in ("binary", "repo")
+        assert branch in ("prod", "nfb")
+
+        if not mode_file.exists():
+            # First run, no mode file exists, we make it and set the mode
+            mode_file.write_text(mode_text)
+            return
+
+        # There was a previous mode, need to make sure that we're in the same mode.
+        prev_mode = mode_file.read_text().strip()
+        if prev_mode == mode_text:
+            return
+
+        logger.error(
+            f"Previous installations using '{prev_mode}' detected, that's different than requested '{mode_text}' mode. "
+            f"You can't switch installation modes, try again in '{prev_mode}' mode or with a clean system."
+        )
+        assert f"You have to use {prev_mode} in this system."
+
+    @staticmethod
+    def get_installation_mode() -> (str, str):
+        """
+        Checks what method was used to install the driver and CUDA Toolkit in this system.
+
+        Returns a tuple of mode and branch. For example ('repo', 'prod').
         """
         mode_file = INSTALLER_DIR / "mode"
 
         if not mode_file.exists():
-            # First run, no mode file exists, we make it and set the mode
-            mode_file.write_text(mode)
-            return
+            raise RuntimeError("No installation data found.")
 
-        # There was a previous mode, need to make sure, we're in the same mode.
-        prev_mode = mode_file.read_text().strip()
-        if prev_mode == mode:
-            return
-
-        logger.error(
-            f"Previous installations using '{prev_mode}' detected, that's different than requested '{mode}' mode. You can't switch installation modes, try again in '{prev_mode}' mode or with a clean system."
-        )
-        assert f"You have to use {prev_mode} in this system."
+        return mode_file.read_text().split(" ")

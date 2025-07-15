@@ -19,6 +19,7 @@ import pathlib
 import sys
 
 import image_builder
+from config import VERSION
 
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import LinuxInstaller, debian, ubuntu, rhel, rocky
@@ -32,13 +33,15 @@ del rocky
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Manage GPU drivers and CUDA toolkit installation."
+        description="Manage GPU drivers and CUDA toolkit installation.",
+        prog="Cuda Installer"
     )
+    parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
     subparsers = parser.add_subparsers(
         dest="command", help="Install GPU driver or CUDA Toolkit."
     )
 
-    # Subparser for install_driver
+    # Subparser for install_driver -------------------------------------------------------------------------------------
     install_driver_parser = subparsers.add_parser(
         "install_driver", help="Install GPU driver."
     )
@@ -66,8 +69,18 @@ def parse_args():
         help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'.",
         required=False,
         default="repo",
+        choices=['repo', 'binary']
     )
 
+    install_driver_parser.add_argument(
+        "--installation-branch",
+        help="Select driver branch to install from. Available branches: nfb, prod. Those will install drivers in versions 575 and 570 respectively. Default: prod",
+        required=False,
+        default="prod",
+        choices=['prod', 'nfb']
+    )
+
+    # Subparser for build_image ----------------------------------------------------------------------------------------
     image_builder = subparsers.add_parser(
         "build_image",
         help="Prepares a new disk image with drivers and/or CUDA Toolkit installed.",
@@ -78,6 +91,15 @@ def parse_args():
         help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'.",
         required=False,
         default="repo",
+        choices=['repo', 'binary']
+    )
+
+    image_builder.add_argument(
+        "--installation-branch",
+        help="Select driver  branch to install from. Available branches: nfb, prod. Those will install drivers in versions 575 and 570 respectively with compatible CUDA Toolkit versions (12.9, 12.8). Default: prod.",
+        required=False,
+        default="prod",
+        choices=['prod', 'nfb']
     )
 
     image_builder.add_argument(
@@ -186,17 +208,17 @@ def parse_args():
         "image_name", help="Name of the image to be created.", type=str
     )
 
-    # Subparser for verify_driver
+    # Subparser for verify_driver --------------------------------------------------------------------------------------
     verify_driver_parser = subparsers.add_parser(
         "verify_driver", help="Verify GPU driver installation."
     )
 
-    # Subparser for uninstall_driver
+    # Subparser for uninstall_driver -----------------------------------------------------------------------------------
     uninstall_driver_parser = subparsers.add_parser(
         "uninstall_driver", help="Uninstall GPU driver."
     )
 
-    # Subparser for install_cuda
+    # Subparser for install_cuda ---------------------------------------------------------------------------------------
     install_cuda_parser = subparsers.add_parser(
         "install_cuda", help="Install CUDA Toolkit."
     )
@@ -211,9 +233,18 @@ def parse_args():
         help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'. You have to use the same mode you used when installing the driver.",
         required=False,
         default="repo",
+        choices=['repo', 'binary']
     )
 
-    # Subparser for verify_cuda
+    install_cuda_parser.add_argument(
+        "--installation-branch",
+        help="Select driver branch to install from. Available branches: nfb, prod. Those will install drivers in versions 575 and 570 respectively with compatible CUDA Toolkit versions (12.9, 12.8). This value must match the value used for driver installation, if driver was installed separately. Default: prod.",
+        required=False,
+        default="prod",
+        choices=['prod', 'nfb']
+    )
+
+    # Subparser for verify_cuda ----------------------------------------------------------------------------------------
     verify_cuda_parser = subparsers.add_parser(
         "verify_cuda", help="Verify CUDA Toolkit installation."
     )
@@ -248,6 +279,7 @@ if __name__ == "__main__":
             secure_boot_private_key=secure_boot_private_key,
             ignore_no_gpu=args.ignore_no_gpu,
             installation_mode=args.installation_mode,
+            branch=args.installation_branch,
         )
     elif args.command == "verify_driver":
         installer = LinuxInstaller.get_installer()
@@ -265,6 +297,7 @@ if __name__ == "__main__":
         installer.install_cuda(
             ignore_no_gpu=args.ignore_no_gpu,
             installation_mode=args.installation_mode,
+            branch=args.installation_branch,
         )
     elif args.command == "verify_cuda":
         installer = LinuxInstaller.get_installer()

@@ -18,7 +18,7 @@ from config import (
     NVIDIA_DEB_REPO_KEYRING_URL,
     NVIDIA_KEYRING_SHA256_SUMS,
     NVIDIA_DEB_REPO_KEYRING_GS_URI,
-    CUDA_TOOLKIT_VERSION_SHORT,
+    VERSION_MAP,
 )
 from decorators import checkpoint_decorator
 from logger import logger
@@ -90,6 +90,7 @@ class UbuntuInstaller(LinuxInstaller):
         self,
         secure_boot_public_key: Optional[pathlib.Path] = None,
         secure_boot_private_key: Optional[pathlib.Path] = None,
+        branch: str = "prod",
     ):
         system, version = self._detect_linux_distro()
         assert system == System.Ubuntu
@@ -106,15 +107,21 @@ class UbuntuInstaller(LinuxInstaller):
 
         try:
             logger.info("Installing GPU driver...")
-            self.run("apt-get install -yq cuda-drivers")
+            driver_version = VERSION_MAP[branch]["driver"]["version"].split('.')[0]
+            self.run(f"apt-get install -yq cuda-drivers-{driver_version}")
+            self.run(f"apt-mark hold cuda-drivers-{driver_version}")
         finally:
             if secure_boot_public_key and secure_boot_private_key:
                 self.remove_custom_dkms_signing_keys()
 
-    def _install_cuda_repo(self):
+    def _repo_uninstall_driver(self):
+        self.run("apt-get remove -y cuda-drivers")
+
+    def _install_cuda_repo(self, branch: str):
         """
         Install CUDA Toolkit using DNF.
         """
         self._add_nvidia_repo()
-        major, minor = CUDA_TOOLKIT_VERSION_SHORT.split(".")
+        major = VERSION_MAP[branch]["cuda"]["major"]
+        minor = VERSION_MAP[branch]["cuda"]["minor"]
         self.run(f"apt-get install -yq cuda-toolkit-{major}-{minor}")

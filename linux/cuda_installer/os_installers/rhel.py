@@ -14,9 +14,10 @@
 import os
 import pathlib
 from typing import Optional
-from logger import logger
 
+from config import VERSION_MAP
 from decorators import checkpoint_decorator
+from logger import logger
 from os_installers import RebootRequired, System
 from os_installers.dnf_system import DNFSystemInstaller
 
@@ -47,6 +48,7 @@ class RHELInstaller(DNFSystemInstaller):
         self,
         secure_boot_public_key: Optional[pathlib.Path] = None,
         secure_boot_private_key: Optional[pathlib.Path] = None,
+        branch: str = "prod",
     ):
 
         self._add_nvidia_repo()
@@ -58,7 +60,12 @@ class RHELInstaller(DNFSystemInstaller):
 
         try:
             logger.info("Installing GPU driver...")
-            self.run(f"dnf -y module install nvidia-driver:latest-dkms")
+            driver_version = VERSION_MAP[branch]["driver"]["version"].split('.')[0]
+            self.run(f"dnf -y module enable nvidia-driver:{driver_version}-dkms")
+            self.run(f"dnf -y module install nvidia-driver:{driver_version}-dkms")
         finally:
             if secure_boot_public_key and secure_boot_private_key:
                 self.remove_custom_dkms_signing_keys()
+
+    def _repo_uninstall_driver(self):
+        self.run("dnf -y module remove nvidia-driver")

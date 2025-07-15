@@ -17,7 +17,7 @@ import configparser
 import pathlib
 import shutil
 
-from config import NVIDIA_RHEL_REPO_URL, CUDA_TOOLKIT_VERSION_SHORT
+from config import NVIDIA_RHEL_REPO_URL, VERSION_MAP
 from decorators import checkpoint_decorator
 from logger import logger
 from os_installers import LinuxInstaller, System
@@ -42,12 +42,13 @@ class DNFSystemInstaller(LinuxInstaller, metaclass=abc.ABCMeta):
         self.run(f"dnf config-manager --add-repo {repo_url}")
         self.run("dnf clean all")
 
-    def _install_cuda_repo(self):
+    def _install_cuda_repo(self, branch: str):
         """
         Install CUDA Toolkit using DNF.
         """
         self._add_nvidia_repo()
-        major, minor = CUDA_TOOLKIT_VERSION_SHORT.split(".")
+        major = VERSION_MAP[branch]["cuda"]["major"]
+        minor = VERSION_MAP[branch]["cuda"]["minor"]
         self.run(f"dnf install -y cuda-toolkit-{major}-{minor}")
 
     def lock_kernel_updates(self):
