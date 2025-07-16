@@ -79,6 +79,10 @@ class Builder:
         self.tmp_dir = tempfile.TemporaryDirectory(delete=True)
         print("Using temp dir: ", self.tmp_dir)
 
+        if self.base_os_image == 'debian-12' and self.installation_mode == 'repo' and self.branch == 'prod':
+            print("Production branch is not supported in 'repo' mode for Debian 12.")
+            sys.exit(1)
+
         self.pub_key, self.priv_key = self.get_signing_keys(args)
 
     @staticmethod

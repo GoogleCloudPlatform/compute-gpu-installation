@@ -78,20 +78,29 @@ def test_image_building(zipapp_file_path: str, mode: str, branch: str, base_os: 
 
     # The image was build successfully, now we need to make a VM using it to check if it works.
     test_vm_name = f"test-image-vm-{base_os}-{mode}-{test_id}"
-    test_zone = random.choice(ZONES["T4"])
+
     try:
-        subprocess.run(
-            f"gcloud compute instances create {test_vm_name} "
-            f"--project={PROJECT} --zone={test_zone} --machine-type=n1-standard-4 "
-            f"--accelerator=count=1,type=nvidia-tesla-t4 "
-            f"--create-disk=auto-delete=yes,boot=yes,device-name={test_vm_name},image=projects/{PROJECT}/global/images/{test_image_name},mode=rw,size=1024,type=pd-balanced "
-            f"--shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring "
-            f"--maintenance-policy=TERMINATE",
-            shell=True,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        for _ in range(5):
+            test_zone = random.choice(ZONES["T4"])
+            try:
+                proc = subprocess.run(
+                    f"gcloud compute instances create {test_vm_name} "
+                    f"--project={PROJECT} --zone={test_zone} --machine-type=n1-standard-4 "
+                    f"--accelerator=count=1,type=nvidia-tesla-t4 "
+                    f"--create-disk=auto-delete=yes,boot=yes,device-name={test_vm_name},image=projects/{PROJECT}/global/images/{test_image_name},mode=rw,size=1024,type=pd-balanced "
+                    f"--shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring "
+                    f"--maintenance-policy=TERMINATE",
+                    shell=True,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except subprocess.CalledProcessError as err:
+                if b'ZONE_RESOURCE_POOL_EXHAUSTED' in err.stderr:
+                    continue
+            else:
+                break
+
         # Wait for the machine to get ready.
         time.sleep(30)
 
