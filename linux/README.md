@@ -19,16 +19,16 @@ The tool supports the following operating systems (x86_64/amd64 architecture):
 
 Some installation methods and branches are unavailable on some of the operating systems.
 
-|           | Binary | Repository |
-|-----------|--------|------------|
-| Debian 11 | ✓      | ❌          |
-| Debian 12 | ✓      | Only NFB²  |
-| RHEL 11   | ✓      | ✓          |
-| RHEL 11   | ✓      | ✓          |
-| Rocky 11  | ✓      | ✓          |
-| Rocky 11  | ✓      | ✓          |
-| Ubuntu 11 | ✓      | ✓          |
-| Ubuntu 11 | ✓      | ✓          |
+|              | Binary | Repository |
+|--------------|--------|------------|
+| Debian 11    | ✓      | ❌          |
+| Debian 12    | ✓      | Only NFB²  |
+| RHEL 8       | ✓      | ✓          |
+| RHEL 9       | ✓      | ✓          |
+| Rocky 8      | ✓      | ✓          |
+| Rocky 9      | ✓      | ✓          |
+| Ubuntu 22.04 | ✓      | ✓          |
+| Ubuntu 24.04 | ✓      | ✓          |
 
 ² - NFB = New feature branch
 
