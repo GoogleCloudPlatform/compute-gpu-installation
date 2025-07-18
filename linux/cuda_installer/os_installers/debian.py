@@ -125,10 +125,12 @@ class DebianInstaller(LinuxInstaller):
         assert system == System.Debian
 
         if version == "11":
-            raise RuntimeError("The 'repo' mode is not available for Debian 11.")
+            raise RuntimeError("The 'repo' mode is not available for Debian 11. Please use --installation-mode=binary.")
 
         if branch == "prod":
-            raise RuntimeError("The 'prod' branch is only available for binary installations on Debian.")
+            raise RuntimeError("The 'prod' branch is only available for binary installations on Debian. Please use "
+                               "--installation-mode=binary to install using binary installer or "
+                               "--installation-branch=nfb to install new feature branch driver.")
 
         if secure_boot_public_key and secure_boot_private_key:
             if secure_boot_public_key.exists() and secure_boot_private_key.exists():
