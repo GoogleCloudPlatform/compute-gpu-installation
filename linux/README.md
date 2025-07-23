@@ -12,7 +12,7 @@ but is considered deprecated and should not be used anymore.
 
 The tool supports the following operating systems (x86_64/amd64 architecture):
 
-* Debian: versions 11 and 12
+* Debian: version 12
 * RHEL: versions 8 and 9
 * Rocky: version 8 and 9
 * Ubuntu: version 22 and 24
@@ -21,16 +21,16 @@ Some installation methods and branches are unavailable on some of the operating 
 
 |              | Binary | Repository |
 |--------------|--------|------------|
-| Debian 11    | ✓      | ❌          |
-| Debian 12    | ✓      | Only NFB²  |
-| RHEL 8       | ✓      | ✓          |
-| RHEL 9       | ✓      | ✓          |
-| Rocky 8      | ✓      | ✓          |
-| Rocky 9      | ✓      | ✓          |
-| Ubuntu 22.04 | ✓      | ✓          |
-| Ubuntu 24.04 | ✓      | ✓          |
+| Debian 12    | ✓      | Only NFB   |
+| RHEL 8       | ✓      | No LTS     |
+| RHEL 9       | ✓      | No LTS     |
+| Rocky 8      | ✓      | No LTS     |
+| Rocky 9      | ✓      | No LTS     |
+| Ubuntu 22.04 | ✓      | No LTS     |
+| Ubuntu 24.04 | ✓      | No LTS     |
 
-² - NFB = New feature branch
+✓ - Production, New Feature and LTS branch supported
+NFB = New feature branch
 
 Note: Just because an operating system is not listed as supported by this tool,  
 it doesn't mean that it's impossible to install NVIDIA drivers on it. You should check and
@@ -41,7 +41,7 @@ try instructions on [NVIDIAs website](https://docs.nvidia.com/cuda/cuda-installa
 The system on which you want to run the script needs to meet the following
 requirements:
 
-*   Python interpreter in version 3.6 or newer installed.
+*   Python interpreter in version 3.8 or newer installed.
 *   Access to Google Cloud Storage (the script needs to download the driver and CUDA toolkit).
 
 ## Driver branches
@@ -57,7 +57,7 @@ NVIDIA releases their GPU drivers in [three branches](https://docs.nvidia.com/da
 
 The `cuda_installer.pyz` tool allows you to pick the driver branch you want to install. Only 
 production and new feature branches are currently supported. To specify the branch you want to
-install use the `--installation-branch <prod|nfb>` flag. If the flag is omitted, production
+install use the `--installation-branch <prod|nfb|lts>` flag. If the flag is omitted, production
 branch is used by default.
 
 ## Driver versions
@@ -66,9 +66,10 @@ This table shows the versions of drivers installed by different versions of the 
 installation method will always match the major version of the drivers and CUDA Toolkit installed by
 the binary version.
 
-| release  | new feature branch       | prod branch               |
-|----------|--------------------------|---------------------------|
-| v1.5.0   | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) |
+| release | new feature branch       | prod branch               | long term support branch  |
+|---------|--------------------------|---------------------------|---------------------------|
+| v1.6.0  | 575.57.08 (cuda: 12.9.1) | 570.172.08 (cuda: 12.8.1) | 535.261.03 (cuda: 12.2.2) |
+| v1.5.0  | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) | n/a                       |
 
 
 ## Running the tool

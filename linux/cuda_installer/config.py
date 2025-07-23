@@ -22,11 +22,11 @@ try:
 except PermissionError:
     pass
 
-VERSION = 'v1.5.0'
+VERSION = 'v1.6.0'
 
 VERSION_MAP = {
     'prod': {
-        'driver': {'version': '570.158.01', 'hash': '47f4cc9ad07bf718d0dce8dbfc0045cd36aced699712c7e8417f85fb87d918eb'},
+        'driver': {'version': '570.172.08', 'hash': '0256867e082caf93d7b25fa7c8e69b316062a9c6c72c6e228fad7b238c6fa17d'},
         'cuda': {'major': '12','minor': '8', 'patch': '1', 'driver': '570.124.06',
                  'hash': '228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797',
                  'samples': '12.8', 'samples_hash': 'fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d'},
@@ -37,6 +37,12 @@ VERSION_MAP = {
                  'hash': '0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a',
                  'samples': '12.8', 'samples_hash': 'fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d'},
     },
+    'lts': {
+        'driver': {'version': '535.261.03', 'hash': 'd74b61d11e9c9b9052f4042d6ec4437f13d1def30e964e232d47e5d659d11d68'},
+        'cuda': {'major': '12', 'minor': '2', 'patch': '2', 'driver': '535.104.05',
+                 'hash': '2b39aae3e7618d9f59a3c8fa1f1bc61f29c0b0e0df75fb05076badb352952ef2',
+                 'samples': '12.2', 'samples_hash': '1823cfe28e97a9230107aa72b231f78952c0f178b71a920f036d360518480bdc'}
+    }
 }
 
 # Check what multi-region should be used to download stuff
@@ -100,7 +106,6 @@ NVIDIA_KEYRING_SHA256_SUMS = {
         "2404": "d2a6b11c096396d868758b86dab1823b25e14d70333f1dfa74da5ddaf6a06dba",
     },
     "debian": {
-        "11": "dfc6e5cdbfc9b4cd1ca8bf6b6eda5d8582ca50d51b7e64ba049b935d52325d58",
         "12": "e7f219eab6fe4819cdb5c15b98233dc3420302d9c00883219cd3d896857cf48d",
     },
 }

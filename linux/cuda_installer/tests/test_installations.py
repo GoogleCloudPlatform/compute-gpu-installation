@@ -167,13 +167,14 @@ def _test_setup(zipapp_gs_url: str,
     branch: str,
     zone: str):
     """
-        Run the installation test for given operating system and GPU card.
-        """
-    if mode == "repo" and opsys[1] == "debian-11":
-        pytest.skip("Repo mode doesn't work with Debian 11.")
+    Run the installation test for given operating system and GPU card.
+    """
 
     if mode == "repo" and opsys[1] == "debian-12" and branch == "prod":
         pytest.skip("Repo mode for prod branch doesn't work on Debian 12.")
+
+    if branch == 'lts' and mode == 'repo':
+        pytest.skip("LTS branch doesn't work for repo mode.")
 
     op_sys_image = get_image_from_family(*opsys)
     disks = [_get_boot_disk(op_sys_image.self_link, zone)]
@@ -319,7 +320,7 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: st
             continue
         else:
             output = process.stdout, process.stderr
-            print("Output:", output)
+            # print("Output:", output)
             if "cuda_installation" in process.stdout:
                 # Give it some time to reboot, as in some cases it can take a while.
                 time.sleep(60)
@@ -347,10 +348,13 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: st
                         "CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked)."
                     )
                     break
+                if "unsupported GNU version! gcc versions later than 12 are not supported!" in process.stdout:
+                    pytest.skip("The system has too new gcc version. Skipping the sample verification (nvidia-smi worked).")
+                    break
                 if "Cuda Toolkit verification completed!" in process.stdout:
                     # Now we're sure that the installation worked.
                     break
-                pytest.fail(f"Cuda verification failed for {instance_name}!")
+                pytest.fail(f"Cuda verification failed for {instance_name}! \n-------------------\n{process.stdout} \n------------------------\n {process.stderr}\n---------------------")
     else:
         print(f"Tried to run SSH connection {tries} times.")
         print(f"Standard output from {instance_name}:\n" + output[0])

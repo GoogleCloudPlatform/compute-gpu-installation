@@ -125,7 +125,7 @@ class DebianInstaller(LinuxInstaller):
         assert system == System.Debian
 
         if version == "11":
-            raise RuntimeError("The 'repo' mode is not available for Debian 11. Please use --installation-mode=binary.")
+            raise RuntimeError("Debian 11 is no longer supported.")
 
         if branch == "prod":
             raise RuntimeError("The 'prod' branch is only available for binary installations on Debian. Please use "

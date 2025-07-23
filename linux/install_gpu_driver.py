@@ -25,7 +25,7 @@ from enum import Enum, auto
 from typing import Optional
 
 warnings.warn(
-    "This script is being deprecated. Please use cuda_installer as replacement.",
+    "This script is deprecated. Please use cuda_installer as replacement.",
     DeprecationWarning,
 )
 

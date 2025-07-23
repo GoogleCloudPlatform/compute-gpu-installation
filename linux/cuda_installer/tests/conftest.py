@@ -27,7 +27,6 @@ INSTALLATION_TIMEOUT = 30 * 60  # 30 minutes
 GS_BUCKET_NAME = f"{PROJECT}-cuda-installer-tests"
 
 OPERATING_SYSTEMS = (
-    ("debian-cloud", "debian-11"),
     ("debian-cloud", "debian-12"),
     ("rhel-cloud", "rhel-8"),
     ("rhel-cloud", "rhel-9"),
@@ -37,8 +36,9 @@ OPERATING_SYSTEMS = (
     ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
 )
 
-BRANCHES = ("prod", "nfb")
+BRANCHES = ("prod", "nfb", "lts")
 MODES = ("binary", "repo")
+
 GPUS = {
     # "L4": "nvidia-l4",
     # "A100": "nvidia-tesla-a100",

@@ -731,7 +731,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         mode_text = f"{mode} {branch}"
 
         assert mode in ("binary", "repo")
-        assert branch in ("prod", "nfb")
+        assert branch in ("prod", "nfb", "lts")
+
+        if mode == "repo" and branch == "lts":
+            raise RuntimeError("The LTS driver branch is supported only in binary installation mode. "
+                               "Please use --installation-mode=binary and --installation-branch=lts to install "
+                               "LTS driver branch.")
 
         if not mode_file.exists():
             # First run, no mode file exists, we make it and set the mode

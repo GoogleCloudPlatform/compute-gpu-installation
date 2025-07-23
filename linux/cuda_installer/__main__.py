@@ -74,10 +74,10 @@ def parse_args():
 
     install_driver_parser.add_argument(
         "--installation-branch",
-        help="Select driver branch to install from. Available branches: nfb, prod. Those will install drivers in versions 575 and 570 respectively. Default: prod",
+        help="Select driver branch to install from. Available branches: nfb, prod and lts. Those will install drivers in versions 575, 570 and 535 respectively. Default: prod",
         required=False,
         default="prod",
-        choices=['prod', 'nfb']
+        choices=['prod', 'nfb', 'lts']
     )
 
     # Subparser for build_image ----------------------------------------------------------------------------------------
@@ -96,10 +96,10 @@ def parse_args():
 
     image_builder.add_argument(
         "--installation-branch",
-        help="Select driver  branch to install from. Available branches: nfb, prod. Those will install drivers in versions 575 and 570 respectively with compatible CUDA Toolkit versions (12.9, 12.8). Default: prod.",
+        help="Select driver  branch to install from. Available branches: nfb, prod and lts. Those will install drivers in versions 575, 570 and 535 respectively with compatible CUDA Toolkit versions (12.9, 12.8 and 12.2). Default: prod.",
         required=False,
         default="prod",
-        choices=['prod', 'nfb']
+        choices=['prod', 'nfb', 'lts']
     )
 
     image_builder.add_argument(
@@ -238,10 +238,10 @@ def parse_args():
 
     install_cuda_parser.add_argument(
         "--installation-branch",
-        help="Select driver branch to install from. Available branches: nfb, prod. Those will install drivers in versions 575 and 570 respectively with compatible CUDA Toolkit versions (12.9, 12.8). This value must match the value used for driver installation, if driver was installed separately. Default: prod.",
+        help="Select driver branch to install from. Available branches: nfb, prod and lts. Those will install drivers in versions 575, 570 and 535 respectively with compatible CUDA Toolkit versions (12.9, 12.8 and 12.2). This value must match the value used for driver installation, if driver was installed separately. Default: prod.",
         required=False,
         default="prod",
-        choices=['prod', 'nfb']
+        choices=['prod', 'nfb', 'lts']
     )
 
     # Subparser for verify_cuda ----------------------------------------------------------------------------------------
