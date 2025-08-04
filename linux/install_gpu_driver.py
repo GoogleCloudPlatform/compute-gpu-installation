@@ -355,8 +355,8 @@ def install_dependencies_debian_ubuntu(system: System, version: str) -> bool:
     os.environ["DEBIAN_FRONTEND"] = "noninteractive"
 
     kernel_version = run("uname -r").stdout.decode().strip()
-    run("apt update")
-    upgrade = run("apt upgrade -y").stdout.decode()
+    run("apt-get update")
+    upgrade = run("apt-get upgrade -y").stdout.decode()
     if "Generating grub configuration file" in upgrade:
         # There was a kernel update, we need to reboot to work with proper kernel version
         return True

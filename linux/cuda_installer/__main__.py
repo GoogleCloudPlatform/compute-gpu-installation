@@ -205,6 +205,19 @@ def parse_args():
     )
 
     image_builder.add_argument(
+        '--network',
+        help="Provide a VPC network identifier to be used for the build VM. Default network is used if not specified.",
+        required=False,
+        default='default'
+    )
+
+    image_builder.add_argument(
+        '--subnet',
+        help="Provide a VPC subnet identifier to be used for the build VM. If not provided, the name of the network will be used. Required for custom mode VPC networks.",
+        required=False,
+    )
+
+    image_builder.add_argument(
         "image_name", help="Name of the image to be created.", type=str
     )
 

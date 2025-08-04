@@ -19,12 +19,14 @@ from multiprocessing import BoundedSemaphore
 
 import google.auth
 import pytest
-from google.cloud import storage
+from google.cloud import storage, compute
 from google.cloud.storage.constants import STANDARD_STORAGE_CLASS
 
 PROJECT = google.auth.default()[1]
 INSTALLATION_TIMEOUT = 30 * 60  # 30 minutes
 GS_BUCKET_NAME = f"{PROJECT}-cuda-installer-tests"
+VPC_NETWORK = "cuda-installer-test-network"
+
 
 OPERATING_SYSTEMS = (
     ("debian-cloud", "debian-12"),
@@ -131,3 +133,40 @@ def zipapp_gs_url(
     blob.acl.user(service_account).grant_read()
     blob.acl.save()
     yield f"gs://{gs_bucket.name}/{blob.name}"
+
+@pytest.fixture(scope="session")
+def vpc_network():
+    """
+    Returns a VPC network dedicated to testing the image builder. Makes a new VPC network if it doesn't exist.
+    """
+    client = compute.NetworksClient()
+    for network in client.list(project=PROJECT):
+        if network.name == VPC_NETWORK:
+            break
+    else:
+        new_network = compute.Network()
+        new_network.name = VPC_NETWORK
+        new_network.auto_create_subnetworks = True
+        client.insert(project=PROJECT, network_resource=new_network).result()
+        network = new_network
+
+        firewall_rule = compute.Firewall()
+        firewall_rule.name = "allow-ssh"
+        firewall_rule.direction = "INGRESS"
+
+        allowed_ports = compute.Allowed()
+        allowed_ports.I_p_protocol = "tcp"
+        allowed_ports.ports = ["22"]
+
+        firewall_rule.allowed = [allowed_ports]
+        firewall_rule.source_ranges = ["0.0.0.0/0"]
+        firewall_rule.network = f"global/networks/{network.name}"
+        firewall_rule.description = "Allowing SSH traffic on port 22 from Internet."
+
+        firewall_client = compute.FirewallsClient()
+        operation = firewall_client.insert(
+            project=PROJECT, firewall_resource=firewall_rule
+        )
+        operation.result()
+
+    return network.name

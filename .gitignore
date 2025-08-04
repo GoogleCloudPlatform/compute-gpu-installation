@@ -1,3 +1,4 @@
 .idea
 __pycache__
 cuda_installer.pyz
+linux/upload_debug_pyz.sh

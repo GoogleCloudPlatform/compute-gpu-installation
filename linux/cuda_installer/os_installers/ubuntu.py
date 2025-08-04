@@ -45,7 +45,7 @@ class UbuntuInstaller(LinuxInstaller):
             NVIDIA_DEB_REPO_KEYRING_GS_URI.format(system=system, version=version),
         )
         self.run(f"dpkg -i {keyring.absolute()}")
-        self.run("apt update")
+        self.run("apt-get update")
 
     @checkpoint_decorator("prerequisites", "System preparations already done.")
     def _install_prerequisites(self):

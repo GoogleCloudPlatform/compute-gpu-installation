@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import pathlib
 import urllib.request
 import urllib.error
@@ -22,7 +23,10 @@ try:
 except PermissionError:
     pass
 
-VERSION = 'v1.6.0'
+if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
+    VERSION="debug"
+else:
+    VERSION = 'v1.6.0'
 
 VERSION_MAP = {
     'prod': {

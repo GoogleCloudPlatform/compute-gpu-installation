@@ -22,7 +22,7 @@ import uuid
 from argparse import Namespace
 from typing import Iterable
 
-from config import region_or_zone_to_multiregion
+from config import region_or_zone_to_multiregion, VERSION
 
 BASE_IMAGES_MAP = {
     # Debian
@@ -61,8 +61,10 @@ class Builder:
         self.image_region = args.image_region or self.multiregion
         self.image_family = args.family
         self.installation_mode = args.installation_mode
+        self.network = args.network
+        self.subnet = args.subnet or self.network
         self.branch = args.installation_branch
-        assert self.branch in ("nfb", "prod")
+        assert self.branch in ("nfb", "prod", "lts")
         self.skip_cleanup = args.skip_cleanup
         self.interactive = args.interactive
 
@@ -181,6 +183,10 @@ class Builder:
                 "--create-disk",
                 f"auto-delete=yes,boot=yes,name={disk_name},{base_os_image},mode=rw,size={self.build_disk_size},type={self.build_disk_type}",
                 "--no-shielded-secure-boot",
+                "--network",
+                self.network,
+                "--subnet",
+                self.subnet
             ],
             check=True,
         )
@@ -434,7 +440,7 @@ class Builder:
         # Download the installer script
         self.execute_command_over_ssh(
             self.build_instance_name,
-            f"curl -L https://storage.googleapis.com/compute-gpu-installation-{self.multiregion}/installer/latest/cuda_installer.pyz --output cuda_installer.pyz",
+            f"curl -L https://storage.googleapis.com/compute-gpu-installation-{self.multiregion}/installer/{VERSION}/cuda_installer.pyz --output cuda_installer.pyz",
         )
 
         out = "Rebooting now."

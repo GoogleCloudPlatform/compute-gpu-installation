@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import itertools
 import os
 import pathlib
@@ -33,7 +33,7 @@ BUILD_ZONE = "europe-west4-c"
 @pytest.mark.parametrize(
     "mode,branch,base_os", itertools.product(MODES, BRANCHES, BASE_IMAGES_MAP.keys())
 )
-def test_image_building(zipapp_file_path: str, mode: str, branch: str, base_os: str):
+def test_image_building(zipapp_file_path: str, mode: str, branch: str, base_os: str, vpc_network: str):
     """
     Execute the cuda_installer.pyz image builder to prepare an image, them make a VM from it and see if it works.
     """
@@ -43,6 +43,10 @@ def test_image_building(zipapp_file_path: str, mode: str, branch: str, base_os: 
         pytest.skip("LTS branch doesn't work for repo mode.")
     test_id = uuid.uuid4().hex[:8]
     test_image_name = f"test-image{base_os}-{mode}-{branch}-{test_id}"
+
+    new_env = copy.copy(os.environ)
+    new_env['CUDA_INSTALLER_DEBUG'] = 'True'
+
     process = subprocess.run(
         [
             "python",
@@ -66,11 +70,16 @@ def test_image_building(zipapp_file_path: str, mode: str, branch: str, base_os: 
             str(pathlib.Path(__file__).parent.absolute() / "test_custom_script.sh"),
             "--base-image",
             base_os,
+            "--network",
+            vpc_network,
+            "--subnet",
+            vpc_network,
             test_image_name,
         ],
         text=True,
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
+        env=new_env,
         check=False,
     )
     # This process will take some time.
