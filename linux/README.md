@@ -195,3 +195,6 @@ This will save `mok.der` and `mok.key` to the specified directory.
         will be opened. This way you can customize your future image, install additional packages, etc.
 *   `--custom-script <PATH_TO_CUSTOM_SCRIPT.sh>`: Provide a path to bash script that will be executed on the build VM 
         before it's turned off. This way you can install additional packages and execute additional configuration steps.
+*   `--network`: The name of the VPC network to which the build VM is connected to. (default: `default`)
+*   `--subnet`: The name of the subnet to be used for the build VM. If not provided, the name of the network is used. 
+        Required for custom mode VPC networks.
