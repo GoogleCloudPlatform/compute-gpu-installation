@@ -66,10 +66,11 @@ This table shows the versions of drivers installed by different versions of the 
 installation method will always match the major version of the drivers and CUDA Toolkit installed by
 the binary version.
 
-| release | new feature branch       | prod branch               | long term support branch  |
-|---------|--------------------------|---------------------------|---------------------------|
-| v1.6.0  | 575.57.08 (cuda: 12.9.1) | 570.172.08 (cuda: 12.8.1) | 535.261.03 (cuda: 12.2.2) |
-| v1.5.0  | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) | n/a                       |
+| release | new feature branch       | prod branch               | long term support branch   | RTX (Virtual Workstation) |
+|---------|--------------------------|---------------------------|----------------------------|---------------------------|
+| v1.7.0  | 575.57.08 (cuda: 12.9.1) | 580.82.07 (cuda: 13.0.1)  | 580.82.07 (cuda: 13.0.1)   | 580.82.07 (cuda: 13.0.1)  |
+| v1.6.0  | 575.57.08 (cuda: 12.9.1) | 570.172.08 (cuda: 12.8.1) | 535.261.03 (cuda: 12.2.2)  | n/a                       |
+| v1.5.0  | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) | n/a                        | n/a                       |
 
 
 ## Running the tool

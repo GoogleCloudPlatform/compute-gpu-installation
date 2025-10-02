@@ -26,14 +26,14 @@ except PermissionError:
 if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
     VERSION="debug"
 else:
-    VERSION = 'v1.6.0'
+    VERSION = 'v1.7.0'
 
 VERSION_MAP = {
     'prod': {
-        'driver': {'version': '570.172.08', 'hash': '0256867e082caf93d7b25fa7c8e69b316062a9c6c72c6e228fad7b238c6fa17d'},
-        'cuda': {'major': '12','minor': '8', 'patch': '1', 'driver': '570.124.06',
-                 'hash': '228f6bcaf5b7618d032939f431914fc92d0e5ed39ebe37098a24502f26a19797',
-                 'samples': '12.8', 'samples_hash': 'fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d'},
+        'driver': {'version': '580.82.07', 'hash': '061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c'},
+        'cuda': {'major': '13', 'minor': '0', 'patch': '1', 'driver': '580.82.07',
+                 'hash': '4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100',
+                 'samples': '13.0', 'samples_hash': '63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79'}
     },
     'nfb': {
         'driver': {'version': '575.57.08', 'hash': '2aa701dac180a7b20a6e578cccd901ded8d44e57d60580f08f9d28dd1fffc6f2'},
@@ -42,11 +42,11 @@ VERSION_MAP = {
                  'samples': '12.8', 'samples_hash': 'fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d'},
     },
     'lts': {
-        'driver': {'version': '535.261.03', 'hash': 'd74b61d11e9c9b9052f4042d6ec4437f13d1def30e964e232d47e5d659d11d68'},
-        'cuda': {'major': '12', 'minor': '2', 'patch': '2', 'driver': '535.104.05',
-                 'hash': '2b39aae3e7618d9f59a3c8fa1f1bc61f29c0b0e0df75fb05076badb352952ef2',
-                 'samples': '12.2', 'samples_hash': '1823cfe28e97a9230107aa72b231f78952c0f178b71a920f036d360518480bdc'}
-    }
+        'driver': {'version': '580.82.07', 'hash': '061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c'},
+        'cuda': {'major': '13', 'minor': '0', 'patch': '1', 'driver': '580.82.07',
+                 'hash': '4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100',
+                 'samples': '13.0', 'samples_hash': '63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79'}
+    },
 }
 
 # Check what multi-region should be used to download stuff

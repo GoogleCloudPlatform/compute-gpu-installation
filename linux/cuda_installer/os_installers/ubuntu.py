@@ -94,7 +94,7 @@ class UbuntuInstaller(LinuxInstaller):
     ):
         system, version = self._detect_linux_distro()
         assert system == System.Ubuntu
-        if version not in ("20.04", "22.04", "24.04"):
+        if version not in ("22.04", "24.04"):
             raise RuntimeError(
                 f"The 'repo' mode is not available for Ubuntu {version}."
             )

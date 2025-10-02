@@ -432,13 +432,13 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                         return False
                 with chdir(
                     temp_dir
-                    / f"cuda-samples-{cuda_samples_version}/Samples/1_Utilities/bandwidthTest"
+                    / f"cuda-samples-{cuda_samples_version}/Samples/6_Performance/transpose"
                 ):
                     self.run("make", check=True)
-                    bandwidth = self.run("./bandwidthTest", check=True)
-                    if "Result = PASS" not in bandwidth.stdout:
+                    bandwidth = self.run("./transpose", check=True)
+                    if "Test passed" not in bandwidth.stdout:
                         logger.error(
-                            "Cuda Toolkit verification failed. BandwidthTest sample failed."
+                            "Cuda Toolkit verification failed. Transpose sample failed."
                         )
                         return False
         logger.info("Cuda Toolkit verification completed!")

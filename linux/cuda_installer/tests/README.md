@@ -11,3 +11,6 @@ manually on the local developer machine. Required steps:
 4. Run tests using `pytest` command in the `/linux/cuda_installer` directory. You can 
    speed up the process by using parallel execution with 
    `pytest -n 8`. 
+
+To test Image Builder, you can set CUDA_INSTALLER_DEBUG=True, so that tests
+download cuda_installer.pyz from /installer/debug/cuda_installer.pyz.
