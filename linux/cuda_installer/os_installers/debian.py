@@ -29,9 +29,9 @@ from os_installers import LinuxInstaller, RebootRequired, System
 
 class DebianInstaller(LinuxInstaller):
     KERNEL_IMAGE_PACKAGE = "linux-image-{version}"
-    KERNEL_VERSION_FORMAT = "{major}.{minor}.{patch}-{micro}-cloud-amd64"
+    KERNEL_VERSION_FORMAT = r"{major}\.{minor}\.{patch}{micro}-cloud-amd64"
     KERNEL_HEADERS_PACKAGE = "linux-headers-{version}"
-    KERNEL_PACKAGE_REGEX = r"linux-image-{major}.{minor}.([\d]+)-([\d]+)-cloud-amd64"
+    KERNEL_PACKAGE_REGEX = r"linux-image-{major}\.{minor}\.([\d]+)(-[\d]+|\+deb13)-cloud-amd64"
 
     def __init__(self):
         super().__init__()
@@ -82,7 +82,7 @@ class DebianInstaller(LinuxInstaller):
 
         self.run(
             f"apt-get install -y make gcc {wanted_kernel_package} {wanted_kernel_headers} "
-            f"software-properties-common pciutils gcc make dkms cmake"
+            f"pciutils gcc make dkms cmake"
         )
         raise RebootRequired
 

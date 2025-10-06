@@ -39,7 +39,7 @@ VERSION_MAP = {
         'driver': {'version': '575.57.08', 'hash': '2aa701dac180a7b20a6e578cccd901ded8d44e57d60580f08f9d28dd1fffc6f2'},
         'cuda': {'major': '12', 'minor': '9', 'patch': '1', 'driver': '575.57.08',
                  'hash': '0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a',
-                 'samples': '12.8', 'samples_hash': 'fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d'},
+                 'samples': '12.9', 'samples_hash': '2e67e1f6bdb15bf11b21e07e988e2f9f60fb054eff51ef01cebdd47229788015'},
     },
     'lts': {
         'driver': {'version': '580.82.07', 'hash': '061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c'},
@@ -111,6 +111,7 @@ NVIDIA_KEYRING_SHA256_SUMS = {
     },
     "debian": {
         "12": "e7f219eab6fe4819cdb5c15b98233dc3420302d9c00883219cd3d896857cf48d",
+        # "13": "e7f219eab6fe4819cdb5c15b98233dc3420302d9c00883219cd3d896857cf48d"
     },
 }
 

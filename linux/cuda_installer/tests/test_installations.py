@@ -170,7 +170,7 @@ def _test_setup(zipapp_gs_url: str,
     Run the installation test for given operating system and GPU card.
     """
 
-    if mode == "repo" and opsys[1] == "debian-12" and branch == "prod":
+    if mode == "repo" and opsys[1].startswith("debian") and branch == "prod":
         pytest.skip("Repo mode for prod branch doesn't work on Debian 12.")
 
     if branch == 'lts' and mode == 'repo':
@@ -272,8 +272,11 @@ def _test_setup(zipapp_gs_url: str,
                 )
                 for msg in msgs:
                     print(msg, file=sys.stderr)
-
-        _test_body(zone, instance_name, gpu, ssh_key, branch)
+        if opsys[1].startswith("debian"):
+            expected_version = VERSION_MAP["nfb"]['driver']['version'].split('.')[0]
+        else:
+            expected_version = VERSION_MAP[branch]['driver']['version'].split('.')[0] # pylint: disable=unreachable
+        _test_body(zone, instance_name, gpu, ssh_key, branch, expected_version)
     finally:
         try:
             # print("This is where I'd delete the instance, but we keep it for debugging.")
@@ -286,7 +289,7 @@ def _test_setup(zipapp_gs_url: str,
             pass
 
 
-def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: str):
+def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: str, expected_version: str = None):
     """
     Execute the proper checks to see if the instance got the GPU drivers properly installed.
     """
@@ -380,5 +383,5 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: st
         text=True,
         timeout=60,
     )
-    # assert f"driver version: {VERSION_MAP[branch]['driver']['version'].split('.')[0]}" in process.stdout.lower()
+    # assert f"driver version: {expected_version}" in process.stdout.lower()
     assert gpu.lower() in process.stdout.lower()
