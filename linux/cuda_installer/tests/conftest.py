@@ -47,6 +47,7 @@ GPUS = {
     # "A100": "nvidia-tesla-a100",
     # "P4": "nvidia-tesla-p4",
     "T4": "nvidia-tesla-t4",
+    "T4-VWS": "nvidia-tesla-t4-vws",
     # "P100": "nvidia-tesla-p100",
     # "V100": "nvidia-tesla-v100",
 }
@@ -89,6 +90,7 @@ MACHINE_TYPES = {
     "A100": "a2-highgpu-1g",
     "P4": "n1-standard-8",
     "T4": "n1-standard-16",
+    "T4-VWS": "n1-standard-16",
     "P100": "n1-standard-8",
     "V100": "n1-standard-8",
 }

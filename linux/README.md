@@ -60,6 +60,10 @@ production and new feature branches are currently supported. To specify the bran
 install use the `--installation-branch <prod|nfb|lts>` flag. If the flag is omitted, production
 branch is used by default.
 
+When the tool detects that it's running on a VM with NVIDIA Virtual Workstation enabled, it will install
+the newest RTX **production branch** of the driver that will allow you to leverage the Virtual Workstation 
+capabilities. The installation mode will also be always `binary` for Virtual Workstations.
+
 ## Driver versions
 
 This table shows the versions of drivers installed by different versions of the tool. The repository

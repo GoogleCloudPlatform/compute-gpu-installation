@@ -17,6 +17,7 @@ import argparse
 import os
 import pathlib
 import sys
+from urllib.request import Request, urlopen
 
 import image_builder
 from config import VERSION
@@ -271,6 +272,12 @@ def assert_root():
         sys.exit(1)
 
 
+def detect_virtual_workstation():
+    request = Request('http://metadata.google.internal/computeMetadata/v1/instance/', headers={'Metadata-Flavor': 'Google'})
+    response = urlopen(request).read().decode()
+    return 'nvidia-grid-license' in response
+
+
 if __name__ == "__main__":
     args = parse_args()
     secure_boot_public_key = (
@@ -284,6 +291,8 @@ if __name__ == "__main__":
         else None
     )
 
+    rtx_vw_enabled = detect_virtual_workstation()
+
     if args.command == "install_driver":
         assert_root()
         installer = LinuxInstaller.get_installer()
@@ -293,6 +302,7 @@ if __name__ == "__main__":
             ignore_no_gpu=args.ignore_no_gpu,
             installation_mode=args.installation_mode,
             branch=args.installation_branch,
+            rtx_vw_enabled=rtx_vw_enabled,
         )
     elif args.command == "verify_driver":
         installer = LinuxInstaller.get_installer()
@@ -311,6 +321,7 @@ if __name__ == "__main__":
             ignore_no_gpu=args.ignore_no_gpu,
             installation_mode=args.installation_mode,
             branch=args.installation_branch,
+            rtx_vw_enabled=rtx_vw_enabled,
         )
     elif args.command == "verify_cuda":
         installer = LinuxInstaller.get_installer()

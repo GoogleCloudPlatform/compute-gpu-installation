@@ -162,6 +162,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         ignore_no_gpu: bool = False,
         installation_mode: str = "repo",
         branch: str = "prod",
+        rtx_vw_enabled: bool = False,
     ):
         """
         Downloads the installation package and installs the driver. It also handles installation of
@@ -176,7 +177,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             logger.info("GPU driver already installed.")
             return
 
-        self.assert_correct_mode(installation_mode, branch)
+        installation_mode, branch = self.verify_installation_mode_and_branch(installation_mode, branch, rtx_vw_enabled)
 
         logger.info("Installing prerequisite packages and updating kernel...")
         try:
@@ -186,7 +187,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         if installation_mode == "binary":
             self._binary_install_driver(
-                secure_boot_public_key, secure_boot_private_key, ignore_no_gpu, branch
+                secure_boot_public_key, secure_boot_private_key, ignore_no_gpu, branch, rtx_vw_enabled
             )
         else:
             self._add_nvidia_repo()
@@ -198,8 +199,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         secure_boot_private_key: Optional[pathlib.Path] = None,
         ignore_no_gpu: bool = False,
         branch: str = "prod",
+        rtx_vw_enabled: bool = False,
     ):
-        installer_path = self.download_driver_installer(branch)
+        installer_path = self.download_driver_installer(branch, rtx_vw_enabled)
 
         logger.info("Installing GPU drivers for your device...")
         if (
@@ -281,20 +283,20 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         "cuda_installation", "CUDA toolkit already marked as installed."
     )
     def _install_cuda(
-        self, ignore_no_gpu: bool = False, installation_mode: str = "repo", branch: str = "prod",
+        self, ignore_no_gpu: bool = False, installation_mode: str = "repo", branch: str = "prod", rtx_vw_enabled: bool = False,
     ):
         """
         This is the method to install the CUDA Toolkit. It will install the toolkit and execute post-installation
         configuration in the operating system, to make it available for all users.
         """
-        self.assert_correct_mode(installation_mode, branch)
+        installation_mode, branch = self.verify_installation_mode_and_branch(installation_mode, branch, rtx_vw_enabled)
 
         if not (self.verify_driver() or ignore_no_gpu):
             logger.info(
                 "CUDA installation requires GPU driver to be installed first. "
                 "Attempting to install GPU driver now."
             )
-            self.install_driver(installation_mode=installation_mode, branch=branch)
+            self.install_driver(installation_mode=installation_mode, branch=branch, rtx_vw_enabled=rtx_vw_enabled)
 
         if installation_mode == "binary":
             self._install_cuda_binary(branch)
@@ -320,10 +322,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         pass
 
     def install_cuda(
-        self, ignore_no_gpu: bool = False, installation_mode: str = "repo", branch: str = "prod"
+        self, ignore_no_gpu: bool = False, installation_mode: str = "repo", branch: str = "prod", rtx_vw_enabled: bool = False
     ):
         try:
-            self._install_cuda(ignore_no_gpu, installation_mode, branch)
+            self._install_cuda(ignore_no_gpu, installation_mode, branch, rtx_vw_enabled)
         except RebootRequired:
             self.reboot()
 
@@ -607,13 +609,15 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                                        CUDA_PATCH=cuda_patch, CUDA_DRIVER_VERSION=driver_version)
         )
 
-    def download_driver_installer(self, branch: str) -> pathlib.Path:
-        driver_version = config.VERSION_MAP[branch]["driver"]["version"]
+    def download_driver_installer(self, branch: str, rtx_vw_enabled: bool) -> pathlib.Path:
+
+        driver_key = "rtx-driver" if rtx_vw_enabled else "driver"
+        driver_version = config.VERSION_MAP[branch][driver_key]["version"]
         logger.info(f"Downloading driver for {branch} branch ({driver_version})...")
 
         return self.download_file(
             DRIVER_URL.format(MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version),
-            config.VERSION_MAP[branch]["driver"]["hash"],
+            config.VERSION_MAP[branch][driver_key]["hash"],
             DRIVER_GS_URI.format(MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version)
         )
 
@@ -722,16 +726,23 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             )
 
     @staticmethod
-    def assert_correct_mode(mode: str, branch: str):
+    def verify_installation_mode_and_branch(mode: str, branch: str, rtx_vw_enabled: bool) -> (str, str):
         """
         Check if the previously used installation method is the same as the current one. If it's not, abort the process
         and display a message about the problem.
+
+        Returns installation mode and branch. Possibly changed in case of RTX VWs installation.
         """
         mode_file = INSTALLER_DIR / "mode"
         mode_text = f"{mode} {branch}"
 
         assert mode in ("binary", "repo")
         assert branch in ("prod", "nfb", "lts")
+
+        if rtx_vw_enabled and (branch != "prod" or mode != "binary"):
+            logger.info("RTX Virtual Workstation detected. Switching to prod branch (binary mode) for driver installation.")
+            branch="prod"
+            mode="binary"
 
         if mode == "repo" and branch == "lts":
             raise RuntimeError("The LTS driver branch is supported only in binary installation mode. "
@@ -741,18 +752,19 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if not mode_file.exists():
             # First run, no mode file exists, we make it and set the mode
             mode_file.write_text(mode_text)
-            return
+            return mode, branch
 
         # There was a previous mode, need to make sure that we're in the same mode.
         prev_mode = mode_file.read_text().strip()
         if prev_mode == mode_text:
-            return
+            return mode, branch
 
         logger.error(
             f"Previous installations using '{prev_mode}' detected, that's different than requested '{mode_text}' mode. "
             f"You can't switch installation modes, try again in '{prev_mode}' mode or with a clean system."
         )
         assert f"You have to use {prev_mode} in this system."
+        return mode, branch
 
     @staticmethod
     def get_installation_mode() -> (str, str):

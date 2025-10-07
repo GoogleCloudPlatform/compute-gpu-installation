@@ -146,10 +146,12 @@ def test_install_driver_for_system(
     mode: str,
     branch: str,
 ):
+    if gpu.endswith('-VWS'):
+        pytest.skip("This test doesn't cover Virtual Workstation drivers.")
     for _ in range(5):
         zone = random.choice(ZONES[gpu])
         try:
-            _test_setup(zipapp_gs_url, service_account, ssh_key, opsys, gpu, mode, branch, zone)
+            _test_setup(zipapp_gs_url, service_account, ssh_key, opsys, gpu, mode, branch, zone, vws=False)
         except RetryInDifferentZone:
             continue
         else:
@@ -157,6 +159,27 @@ def test_install_driver_for_system(
     else:
         pytest.fail("Couldn't find a zone to start the instance in.")
 
+@pytest.mark.parametrize(
+    "opsys", OPERATING_SYSTEMS
+)
+def test_install_rtx_vw_driver_for_system(
+        zipapp_gs_url: str,
+        service_account: str,
+        ssh_key: str,
+        opsys: Tuple[str, str],
+):
+    for _ in range(5):
+        zone = random.choice(ZONES['T4'])
+        try:
+            nvidia_smi_q = _test_setup(zipapp_gs_url, service_account, ssh_key, opsys, 'T4', 'binary', 'prod', zone, vws=True)
+        except RetryInDifferentZone:
+            continue
+        else:
+            assert "vGPU Software Licensed Product" in nvidia_smi_q
+            assert "Licensed (Expiry: Permanent)" in nvidia_smi_q
+            break
+    else:
+        pytest.fail("Couldn't find a zone to start the instance in.")
 
 def _test_setup(zipapp_gs_url: str,
     service_account: str,
@@ -165,7 +188,8 @@ def _test_setup(zipapp_gs_url: str,
     gpu: str,
     mode: str,
     branch: str,
-    zone: str):
+    zone: str,
+    vws: bool) -> str:
     """
     Run the installation test for given operating system and GPU card.
     """
@@ -190,11 +214,17 @@ def _test_setup(zipapp_gs_url: str,
     # GPUs
     accelerator = compute_v1.AcceleratorConfig()
     accelerator.accelerator_count = 1
-    accelerator.accelerator_type = f"zones/{zone}/acceleratorTypes/{GPUS[gpu]}"
+    if vws:
+        accelerator.accelerator_type = f"zones/{zone}/acceleratorTypes/{GPUS[gpu]}-vws"
+    else:
+        accelerator.accelerator_type = f"zones/{zone}/acceleratorTypes/{GPUS[gpu]}"
 
     instance = compute_v1.Instance()
     instance.machine_type = f"zones/{zone}/machineTypes/{MACHINE_TYPES[gpu]}"
-    instance_name = f"gpu-test-{opsys[1]}-{gpu}-{mode}-{branch}-".lower() + uuid.uuid4().hex[:10]
+    if vws:
+        instance_name = f"gpu-test-{opsys[1]}-{gpu}-vws-{mode}-{branch}-".lower() + uuid.uuid4().hex[:10]
+    else:
+        instance_name = f"gpu-test-{opsys[1]}-{gpu}-{mode}-{branch}-".lower() + uuid.uuid4().hex[:10]
     instance.name = instance_name
     instance.disks = disks
     instance.guest_accelerators = [accelerator]
@@ -276,7 +306,7 @@ def _test_setup(zipapp_gs_url: str,
             expected_version = VERSION_MAP["nfb"]['driver']['version'].split('.')[0]
         else:
             expected_version = VERSION_MAP[branch]['driver']['version'].split('.')[0] # pylint: disable=unreachable
-        _test_body(zone, instance_name, gpu, ssh_key, branch, expected_version)
+        return _test_body(zone, instance_name, gpu, ssh_key, branch, expected_version)
     finally:
         try:
             # print("This is where I'd delete the instance, but we keep it for debugging.")
@@ -289,7 +319,7 @@ def _test_setup(zipapp_gs_url: str,
             pass
 
 
-def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: str, expected_version: str = None):
+def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: str, expected_version: str = None) -> str:
     """
     Execute the proper checks to see if the instance got the GPU drivers properly installed.
     """
@@ -385,3 +415,23 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: st
     )
     # assert f"driver version: {expected_version}" in process.stdout.lower()
     assert gpu.lower() in process.stdout.lower()
+
+    process = subprocess.run(
+        [
+            "gcloud",
+            "compute",
+            "ssh",
+            instance_name,
+            "--zone",
+            zone,
+            "--ssh-key-file",
+            ssh_key,
+            "--command",
+            "nvidia-smi -q",
+        ],
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+        timeout=60,
+    )
+    return process.stdout

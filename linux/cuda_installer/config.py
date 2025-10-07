@@ -31,6 +31,7 @@ else:
 VERSION_MAP = {
     'prod': {
         'driver': {'version': '580.82.07', 'hash': '061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c'},
+        'rtx-driver': {'version': '580.82.07-grid', 'hash': '387dc4927ffeba00ecc8c2a561c3f2cfb1c486d2e63105ce1bf52572483a63dc'},
         'cuda': {'major': '13', 'minor': '0', 'patch': '1', 'driver': '580.82.07',
                  'hash': '4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100',
                  'samples': '13.0', 'samples_hash': '63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79'}
