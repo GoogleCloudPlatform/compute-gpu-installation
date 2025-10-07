@@ -13,11 +13,11 @@
 # limitations under the License.
 import itertools
 import os
+import random
 import subprocess
 import sys
 import tempfile
 import time
-import random
 import uuid
 from pathlib import Path
 from typing import Tuple
@@ -25,8 +25,8 @@ from typing import Tuple
 import google.api_core.exceptions
 import google.auth
 import pytest
-from google.cloud import iam_admin_v1
 from google.cloud import compute_v1
+from google.cloud import iam_admin_v1
 
 from config import VERSION_MAP
 from tests.conftest import (
@@ -146,12 +146,22 @@ def test_install_driver_for_system(
     mode: str,
     branch: str,
 ):
-    if gpu.endswith('-VWS'):
+    if gpu.endswith("-VWS"):
         pytest.skip("This test doesn't cover Virtual Workstation drivers.")
     for _ in range(5):
         zone = random.choice(ZONES[gpu])
         try:
-            _test_setup(zipapp_gs_url, service_account, ssh_key, opsys, gpu, mode, branch, zone, vws=False)
+            _test_setup(
+                zipapp_gs_url,
+                service_account,
+                ssh_key,
+                opsys,
+                gpu,
+                mode,
+                branch,
+                zone,
+                vws=False,
+            )
         except RetryInDifferentZone:
             continue
         else:
@@ -159,19 +169,28 @@ def test_install_driver_for_system(
     else:
         pytest.fail("Couldn't find a zone to start the instance in.")
 
-@pytest.mark.parametrize(
-    "opsys", OPERATING_SYSTEMS
-)
+
+@pytest.mark.parametrize("opsys", OPERATING_SYSTEMS)
 def test_install_rtx_vw_driver_for_system(
-        zipapp_gs_url: str,
-        service_account: str,
-        ssh_key: str,
-        opsys: Tuple[str, str],
+    zipapp_gs_url: str,
+    service_account: str,
+    ssh_key: str,
+    opsys: Tuple[str, str],
 ):
     for _ in range(5):
-        zone = random.choice(ZONES['T4'])
+        zone = random.choice(ZONES["T4"])
         try:
-            nvidia_smi_q = _test_setup(zipapp_gs_url, service_account, ssh_key, opsys, 'T4', 'binary', 'prod', zone, vws=True)
+            nvidia_smi_q = _test_setup(
+                zipapp_gs_url,
+                service_account,
+                ssh_key,
+                opsys,
+                "T4",
+                "binary",
+                "prod",
+                zone,
+                vws=True,
+            )
         except RetryInDifferentZone:
             continue
         else:
@@ -181,7 +200,9 @@ def test_install_rtx_vw_driver_for_system(
     else:
         pytest.fail("Couldn't find a zone to start the instance in.")
 
-def _test_setup(zipapp_gs_url: str,
+
+def _test_setup(
+    zipapp_gs_url: str,
     service_account: str,
     ssh_key: str,
     opsys: Tuple[str, str],
@@ -189,7 +210,8 @@ def _test_setup(zipapp_gs_url: str,
     mode: str,
     branch: str,
     zone: str,
-    vws: bool) -> str:
+    vws: bool,
+) -> str:
     """
     Run the installation test for given operating system and GPU card.
     """
@@ -197,7 +219,7 @@ def _test_setup(zipapp_gs_url: str,
     if mode == "repo" and opsys[1].startswith("debian") and branch == "prod":
         pytest.skip("Repo mode for prod branch doesn't work on Debian 12.")
 
-    if branch == 'lts' and mode == 'repo':
+    if branch == "lts" and mode == "repo":
         pytest.skip("LTS branch doesn't work for repo mode.")
 
     op_sys_image = get_image_from_family(*opsys)
@@ -222,9 +244,15 @@ def _test_setup(zipapp_gs_url: str,
     instance = compute_v1.Instance()
     instance.machine_type = f"zones/{zone}/machineTypes/{MACHINE_TYPES[gpu]}"
     if vws:
-        instance_name = f"gpu-test-{opsys[1]}-{gpu}-vws-{mode}-{branch}-".lower() + uuid.uuid4().hex[:10]
+        instance_name = (
+            f"gpu-test-{opsys[1]}-{gpu}-vws-{mode}-{branch}-".lower()
+            + uuid.uuid4().hex[:10]
+        )
     else:
-        instance_name = f"gpu-test-{opsys[1]}-{gpu}-{mode}-{branch}-".lower() + uuid.uuid4().hex[:10]
+        instance_name = (
+            f"gpu-test-{opsys[1]}-{gpu}-{mode}-{branch}-".lower()
+            + uuid.uuid4().hex[:10]
+        )
     instance.name = instance_name
     instance.disks = disks
     instance.guest_accelerators = [accelerator]
@@ -285,7 +313,10 @@ def _test_setup(zipapp_gs_url: str,
                 operation.error,
                 file=sys.stderr,
             )
-            if operation.error.errors[0].code == 'ZONE_RESOURCE_POOL_EXHAUSTED_WITH_DETAILS':
+            if (
+                operation.error.errors[0].code
+                == "ZONE_RESOURCE_POOL_EXHAUSTED_WITH_DETAILS"
+            ):
                 # Need to retry in different zone.
                 raise RetryInDifferentZone()
             raise RuntimeError(operation.error)
@@ -303,9 +334,11 @@ def _test_setup(zipapp_gs_url: str,
                 for msg in msgs:
                     print(msg, file=sys.stderr)
         if opsys[1].startswith("debian"):
-            expected_version = VERSION_MAP["nfb"]['driver']['version'].split('.')[0]
+            expected_version = VERSION_MAP["nfb"]["driver"]["version"].split(".")[0]
         else:
-            expected_version = VERSION_MAP[branch]['driver']['version'].split('.')[0] # pylint: disable=unreachable
+            expected_version = VERSION_MAP[branch]["driver"]["version"].split(".")[
+                0
+            ]  # pylint: disable=unreachable
         return _test_body(zone, instance_name, gpu, ssh_key, branch, expected_version)
     finally:
         try:
@@ -319,7 +352,14 @@ def _test_setup(zipapp_gs_url: str,
             pass
 
 
-def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: str, expected_version: str = None) -> str:
+def _test_body(
+    zone: str,
+    instance_name: str,
+    gpu: str,
+    ssh_key: str,
+    branch: str,
+    expected_version: str = None,
+) -> str:
     """
     Execute the proper checks to see if the instance got the GPU drivers properly installed.
     """
@@ -381,13 +421,20 @@ def _test_body(zone: str, instance_name: str, gpu: str, ssh_key: str, branch: st
                         "CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked)."
                     )
                     break
-                if "unsupported GNU version! gcc versions later than 12 are not supported!" in process.stdout:
-                    pytest.skip("The system has too new gcc version. Skipping the sample verification (nvidia-smi worked).")
+                if (
+                    "unsupported GNU version! gcc versions later than 12 are not supported!"
+                    in process.stdout
+                ):
+                    pytest.skip(
+                        "The system has too new gcc version. Skipping the sample verification (nvidia-smi worked)."
+                    )
                     break
                 if "Cuda Toolkit verification completed!" in process.stdout:
                     # Now we're sure that the installation worked.
                     break
-                pytest.fail(f"Cuda verification failed for {instance_name}! \n-------------------\n{process.stdout} \n------------------------\n {process.stderr}\n---------------------")
+                pytest.fail(
+                    f"Cuda verification failed for {instance_name}! \n-------------------\n{process.stdout} \n------------------------\n {process.stderr}\n---------------------"
+                )
     else:
         print(f"Tried to run SSH connection {tries} times.")
         print(f"Standard output from {instance_name}:\n" + output[0])

@@ -107,7 +107,7 @@ class UbuntuInstaller(LinuxInstaller):
 
         try:
             logger.info("Installing GPU driver...")
-            driver_version = VERSION_MAP[branch]["driver"]["version"].split('.')[0]
+            driver_version = VERSION_MAP[branch]["driver"]["version"].split(".")[0]
             self.run(f"apt-get install -yq cuda-drivers-{driver_version}")
             self.run(f"apt-mark hold cuda-drivers-{driver_version}")
         finally:

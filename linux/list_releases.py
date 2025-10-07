@@ -25,11 +25,12 @@ from cuda_installer.config import VERSION_MAP
 
 NVIDIA_RELEASES_JSON = "https://docs.nvidia.com/datacenter/tesla/drivers/releases.json"
 BRANCHES = {
-    'lts': 'lts branch',
-    'prod': 'production branch',
-    'nfb': 'new feature branch'
+    "lts": "lts branch",
+    "prod": "production branch",
+    "nfb": "new feature branch",
 }
-ARCHITECTURE = 'x86_64'
+ARCHITECTURE = "x86_64"
+
 
 def get_release_info() -> dict[str, dict]:
     """
@@ -48,32 +49,39 @@ def get_release_info() -> dict[str, dict]:
         print(e)
         sys.exit(2)
 
+
 def find_newest_branch_version(release_info: dict[str, dict], branch: str) -> str:
     for version in sorted(release_info.keys(), reverse=True):
         if release_info[version]["type"] == branch:
             return version
     raise RuntimeError(f"No {branch} branch found.")
 
+
 def parse_version_info(version_info: dict) -> dict:
     return {
-        'version': version_info['release_version'],
-        'runfile_url': version_info['runfile_url'][ARCHITECTURE],
-        'release_date': version_info['release_date'],
+        "version": version_info["release_version"],
+        "runfile_url": version_info["runfile_url"][ARCHITECTURE],
+        "release_date": version_info["release_date"],
     }
 
+
 def compare_with_config(version_info: dict, branch: str) -> dict:
-    if VERSION_MAP[branch]['driver']['version'] != version_info[branch]['version']:
-        print(f"Update on {branch.upper()} branch: {VERSION_MAP[branch]['driver']['version']} -> {version_info[branch]['version']}: {version_info[branch]['runfile_url']}")
+    if VERSION_MAP[branch]["driver"]["version"] != version_info[branch]["version"]:
+        print(
+            f"Update on {branch.upper()} branch: {VERSION_MAP[branch]['driver']['version']} -> {version_info[branch]['version']}: {version_info[branch]['runfile_url']}"
+        )
 
 
 if __name__ == "__main__":
     release_info = get_release_info()
     versions = {
-        branch: find_newest_branch_version(release_info, full_name) for branch, full_name in BRANCHES.items()
+        branch: find_newest_branch_version(release_info, full_name)
+        for branch, full_name in BRANCHES.items()
     }
 
     version_info = {
-        branch: parse_version_info(release_info[versions[branch]]['driver_info'][0]) for branch in BRANCHES
+        branch: parse_version_info(release_info[versions[branch]]["driver_info"][0])
+        for branch in BRANCHES
     }
     for branch in BRANCHES:
         compare_with_config(version_info, branch)

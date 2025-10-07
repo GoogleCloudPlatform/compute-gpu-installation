@@ -81,7 +81,11 @@ class Builder:
         self.tmp_dir = tempfile.TemporaryDirectory(delete=True)
         print("Using temp dir: ", self.tmp_dir)
 
-        if self.base_os_image == 'debian-12' and self.installation_mode == 'repo' and self.branch == 'prod':
+        if (
+            self.base_os_image == "debian-12"
+            and self.installation_mode == "repo"
+            and self.branch == "prod"
+        ):
             print("Production branch is not supported in 'repo' mode for Debian 12.")
             sys.exit(1)
 
@@ -186,7 +190,7 @@ class Builder:
                 "--network",
                 self.network,
                 "--subnet",
-                self.subnet
+                self.subnet,
             ],
             check=True,
         )

@@ -31,7 +31,9 @@ class DebianInstaller(LinuxInstaller):
     KERNEL_IMAGE_PACKAGE = "linux-image-{version}"
     KERNEL_VERSION_FORMAT = r"{major}\.{minor}\.{patch}{micro}-cloud-amd64"
     KERNEL_HEADERS_PACKAGE = "linux-headers-{version}"
-    KERNEL_PACKAGE_REGEX = r"linux-image-{major}\.{minor}\.([\d]+)(-[\d]+|\+deb13)-cloud-amd64"
+    KERNEL_PACKAGE_REGEX = (
+        r"linux-image-{major}\.{minor}\.([\d]+)(-[\d]+|\+deb13)-cloud-amd64"
+    )
 
     def __init__(self):
         super().__init__()
@@ -119,7 +121,7 @@ class DebianInstaller(LinuxInstaller):
         self,
         secure_boot_public_key: Optional[pathlib.Path] = None,
         secure_boot_private_key: Optional[pathlib.Path] = None,
-        branch: str = "prod"
+        branch: str = "prod",
     ):
         system, version = self._detect_linux_distro()
         assert system == System.Debian
@@ -128,9 +130,11 @@ class DebianInstaller(LinuxInstaller):
             raise RuntimeError("Debian 11 is no longer supported.")
 
         if branch == "prod":
-            raise RuntimeError("The 'prod' branch is only available for binary installations on Debian. Please use "
-                               "--installation-mode=binary to install using binary installer or "
-                               "--installation-branch=nfb to install new feature branch driver.")
+            raise RuntimeError(
+                "The 'prod' branch is only available for binary installations on Debian. Please use "
+                "--installation-mode=binary to install using binary installer or "
+                "--installation-branch=nfb to install new feature branch driver."
+            )
 
         if secure_boot_public_key and secure_boot_private_key:
             if secure_boot_public_key.exists() and secure_boot_private_key.exists():
@@ -155,7 +159,9 @@ class DebianInstaller(LinuxInstaller):
         system, version = self._detect_linux_distro()
 
         if version == "lts":
-            raise RuntimeError("The 'lts' branch is not available in repo installation mode.")
+            raise RuntimeError(
+                "The 'lts' branch is not available in repo installation mode."
+            )
 
         self._add_nvidia_repo()
         major = VERSION_MAP[branch]["cuda"]["major"]

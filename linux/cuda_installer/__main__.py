@@ -35,9 +35,9 @@ del rocky
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Manage GPU drivers and CUDA toolkit installation.",
-        prog="Cuda Installer"
+        prog="Cuda Installer",
     )
-    parser.add_argument('--version', action='version', version=f'%(prog)s {VERSION}')
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     subparsers = parser.add_subparsers(
         dest="command", help="Install GPU driver or CUDA Toolkit."
     )
@@ -70,7 +70,7 @@ def parse_args():
         help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'.",
         required=False,
         default="repo",
-        choices=['repo', 'binary']
+        choices=["repo", "binary"],
     )
 
     install_driver_parser.add_argument(
@@ -78,7 +78,7 @@ def parse_args():
         help="Select driver branch to install from. Available branches: nfb, prod and lts. Those will install drivers in versions 575, 570 and 535 respectively. Default: prod",
         required=False,
         default="prod",
-        choices=['prod', 'nfb', 'lts']
+        choices=["prod", "nfb", "lts"],
     )
 
     # Subparser for build_image ----------------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ def parse_args():
         help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'.",
         required=False,
         default="repo",
-        choices=['repo', 'binary']
+        choices=["repo", "binary"],
     )
 
     image_builder.add_argument(
@@ -100,7 +100,7 @@ def parse_args():
         help="Select driver  branch to install from. Available branches: nfb, prod and lts. Those will install drivers in versions 575, 570 and 535 respectively with compatible CUDA Toolkit versions (12.9, 12.8 and 12.2). Default: prod.",
         required=False,
         default="prod",
-        choices=['prod', 'nfb', 'lts']
+        choices=["prod", "nfb", "lts"],
     )
 
     image_builder.add_argument(
@@ -206,14 +206,14 @@ def parse_args():
     )
 
     image_builder.add_argument(
-        '--network',
+        "--network",
         help="Provide a VPC network identifier to be used for the build VM. Default network is used if not specified.",
         required=False,
-        default='default'
+        default="default",
     )
 
     image_builder.add_argument(
-        '--subnet',
+        "--subnet",
         help="Provide a VPC subnet identifier to be used for the build VM. If not provided, the name of the network will be used. Required for custom mode VPC networks.",
         required=False,
     )
@@ -247,7 +247,7 @@ def parse_args():
         help="Pick the installation mode. Either 'repo' or 'binary'. Repo mode will add NVIDIA repository to your sources list and install packages from repository. Binary will download binary installer files and use them to install. Default mode is 'repo'. You have to use the same mode you used when installing the driver.",
         required=False,
         default="repo",
-        choices=['repo', 'binary']
+        choices=["repo", "binary"],
     )
 
     install_cuda_parser.add_argument(
@@ -255,7 +255,7 @@ def parse_args():
         help="Select driver branch to install from. Available branches: nfb, prod and lts. Those will install drivers in versions 575, 570 and 535 respectively with compatible CUDA Toolkit versions (12.9, 12.8 and 12.2). This value must match the value used for driver installation, if driver was installed separately. Default: prod.",
         required=False,
         default="prod",
-        choices=['prod', 'nfb', 'lts']
+        choices=["prod", "nfb", "lts"],
     )
 
     # Subparser for verify_cuda ----------------------------------------------------------------------------------------
@@ -273,9 +273,12 @@ def assert_root():
 
 
 def detect_virtual_workstation():
-    request = Request('http://metadata.google.internal/computeMetadata/v1/instance/', headers={'Metadata-Flavor': 'Google'})
+    request = Request(
+        "http://metadata.google.internal/computeMetadata/v1/instance/",
+        headers={"Metadata-Flavor": "Google"},
+    )
     response = urlopen(request).read().decode()
-    return 'nvidia-grid-license' in response
+    return "nvidia-grid-license" in response
 
 
 if __name__ == "__main__":

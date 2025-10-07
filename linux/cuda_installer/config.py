@@ -24,29 +24,59 @@ except PermissionError:
     pass
 
 if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
-    VERSION="debug"
+    VERSION = "debug"
 else:
-    VERSION = 'v1.7.0'
+    VERSION = "v1.7.0"
 
 VERSION_MAP = {
-    'prod': {
-        'driver': {'version': '580.82.07', 'hash': '061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c'},
-        'rtx-driver': {'version': '580.82.07-grid', 'hash': '387dc4927ffeba00ecc8c2a561c3f2cfb1c486d2e63105ce1bf52572483a63dc'},
-        'cuda': {'major': '13', 'minor': '0', 'patch': '1', 'driver': '580.82.07',
-                 'hash': '4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100',
-                 'samples': '13.0', 'samples_hash': '63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79'}
+    "prod": {
+        "driver": {
+            "version": "580.82.07",
+            "hash": "061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c",
+        },
+        "rtx-driver": {
+            "version": "580.82.07-grid",
+            "hash": "387dc4927ffeba00ecc8c2a561c3f2cfb1c486d2e63105ce1bf52572483a63dc",
+        },
+        "cuda": {
+            "major": "13",
+            "minor": "0",
+            "patch": "1",
+            "driver": "580.82.07",
+            "hash": "4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100",
+            "samples": "13.0",
+            "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
+        },
     },
-    'nfb': {
-        'driver': {'version': '575.57.08', 'hash': '2aa701dac180a7b20a6e578cccd901ded8d44e57d60580f08f9d28dd1fffc6f2'},
-        'cuda': {'major': '12', 'minor': '9', 'patch': '1', 'driver': '575.57.08',
-                 'hash': '0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a',
-                 'samples': '12.9', 'samples_hash': '2e67e1f6bdb15bf11b21e07e988e2f9f60fb054eff51ef01cebdd47229788015'},
+    "nfb": {
+        "driver": {
+            "version": "575.57.08",
+            "hash": "2aa701dac180a7b20a6e578cccd901ded8d44e57d60580f08f9d28dd1fffc6f2",
+        },
+        "cuda": {
+            "major": "12",
+            "minor": "9",
+            "patch": "1",
+            "driver": "575.57.08",
+            "hash": "0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a",
+            "samples": "12.9",
+            "samples_hash": "2e67e1f6bdb15bf11b21e07e988e2f9f60fb054eff51ef01cebdd47229788015",
+        },
     },
-    'lts': {
-        'driver': {'version': '580.82.07', 'hash': '061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c'},
-        'cuda': {'major': '13', 'minor': '0', 'patch': '1', 'driver': '580.82.07',
-                 'hash': '4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100',
-                 'samples': '13.0', 'samples_hash': '63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79'}
+    "lts": {
+        "driver": {
+            "version": "580.82.07",
+            "hash": "061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c",
+        },
+        "cuda": {
+            "major": "13",
+            "minor": "0",
+            "patch": "1",
+            "driver": "580.82.07",
+            "hash": "4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100",
+            "samples": "13.0",
+            "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
+        },
     },
 }
 
@@ -79,7 +109,6 @@ try:
     MULTIREGION = region_or_zone_to_multiregion(zone)
 except urllib.error.URLError:
     MULTIREGION = "us"
-
 
 
 DRIVER_URL = "https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"

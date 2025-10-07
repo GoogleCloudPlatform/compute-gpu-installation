@@ -90,7 +90,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         try:
             os.chdir(config.INSTALLER_DIR)
         except FileNotFoundError:
-            logger.warning(f"Couldn't switch working directory to {config.INSTALLER_DIR}. Running in {os.getcwd()}.")
+            logger.warning(
+                f"Couldn't switch working directory to {config.INSTALLER_DIR}. Running in {os.getcwd()}."
+            )
 
     @abc.abstractmethod
     def _add_nvidia_repo(self):
@@ -177,7 +179,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             logger.info("GPU driver already installed.")
             return
 
-        installation_mode, branch = self.verify_installation_mode_and_branch(installation_mode, branch, rtx_vw_enabled)
+        installation_mode, branch = self.verify_installation_mode_and_branch(
+            installation_mode, branch, rtx_vw_enabled
+        )
 
         logger.info("Installing prerequisite packages and updating kernel...")
         try:
@@ -187,11 +191,17 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         if installation_mode == "binary":
             self._binary_install_driver(
-                secure_boot_public_key, secure_boot_private_key, ignore_no_gpu, branch, rtx_vw_enabled
+                secure_boot_public_key,
+                secure_boot_private_key,
+                ignore_no_gpu,
+                branch,
+                rtx_vw_enabled,
             )
         else:
             self._add_nvidia_repo()
-            self._repo_install_driver(secure_boot_public_key, secure_boot_private_key, branch)
+            self._repo_install_driver(
+                secure_boot_public_key, secure_boot_private_key, branch
+            )
 
     def _binary_install_driver(
         self,
@@ -252,7 +262,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         mode, branch = self.get_installation_mode()
 
-        if mode == 'repo':
+        if mode == "repo":
             self._repo_uninstall_driver()
             return
 
@@ -283,20 +293,30 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         "cuda_installation", "CUDA toolkit already marked as installed."
     )
     def _install_cuda(
-        self, ignore_no_gpu: bool = False, installation_mode: str = "repo", branch: str = "prod", rtx_vw_enabled: bool = False,
+        self,
+        ignore_no_gpu: bool = False,
+        installation_mode: str = "repo",
+        branch: str = "prod",
+        rtx_vw_enabled: bool = False,
     ):
         """
         This is the method to install the CUDA Toolkit. It will install the toolkit and execute post-installation
         configuration in the operating system, to make it available for all users.
         """
-        installation_mode, branch = self.verify_installation_mode_and_branch(installation_mode, branch, rtx_vw_enabled)
+        installation_mode, branch = self.verify_installation_mode_and_branch(
+            installation_mode, branch, rtx_vw_enabled
+        )
 
         if not (self.verify_driver() or ignore_no_gpu):
             logger.info(
                 "CUDA installation requires GPU driver to be installed first. "
                 "Attempting to install GPU driver now."
             )
-            self.install_driver(installation_mode=installation_mode, branch=branch, rtx_vw_enabled=rtx_vw_enabled)
+            self.install_driver(
+                installation_mode=installation_mode,
+                branch=branch,
+                rtx_vw_enabled=rtx_vw_enabled,
+            )
 
         if installation_mode == "binary":
             self._install_cuda_binary(branch)
@@ -322,7 +342,11 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         pass
 
     def install_cuda(
-        self, ignore_no_gpu: bool = False, installation_mode: str = "repo", branch: str = "prod", rtx_vw_enabled: bool = False
+        self,
+        ignore_no_gpu: bool = False,
+        installation_mode: str = "repo",
+        branch: str = "prod",
+        rtx_vw_enabled: bool = False,
     ):
         try:
             self._install_cuda(ignore_no_gpu, installation_mode, branch, rtx_vw_enabled)
@@ -342,8 +366,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         cuda_minor = config.VERSION_MAP[branch]["cuda"]["minor"]
         cuda_patch = config.VERSION_MAP[branch]["cuda"]["patch"]
 
-        cuda_bin_folder = CUDA_BIN_FOLDER.format(CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor)
-        cuda_lib_folder = CUDA_LIB_FOLDER.format(CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor)
+        cuda_bin_folder = CUDA_BIN_FOLDER.format(
+            CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor
+        )
+        cuda_lib_folder = CUDA_LIB_FOLDER.format(
+            CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor
+        )
 
         os.environ["PATH"] = f"{cuda_bin_folder}:{os.environ['PATH']}"
         if "LD_LIBRARY_PATH" in os.environ:
@@ -404,8 +432,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         """
         branch = self.get_installation_mode()[1]
         cuda_samples_version = config.VERSION_MAP[branch]["cuda"]["samples"]
-        cuda_samples_url = CUDA_SAMPLES_URL.format(MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version)
-        cuda_samples_gs_uri = CUDA_SAMPLES_GS_URI.format(MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version)
+        cuda_samples_url = CUDA_SAMPLES_URL.format(
+            MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version
+        )
+        cuda_samples_gs_uri = CUDA_SAMPLES_GS_URI.format(
+            MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version
+        )
         cuda_samples_hash = config.VERSION_MAP[branch]["cuda"]["samples_hash"]
 
         logger.info("Verifying CUDA installation...")
@@ -599,26 +631,44 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         cuda_minor = config.VERSION_MAP[branch]["cuda"]["minor"]
         cuda_patch = config.VERSION_MAP[branch]["cuda"]["patch"]
         driver_version = config.VERSION_MAP[branch]["cuda"]["driver"]
-        logger.info(f"Downloading CUDA installation kit for {branch} branch ({cuda_major}.{cuda_minor}.{cuda_patch})...")
-
-        return self.download_file(
-            CUDA_TOOLKIT_URL.format(MULTIREGION=config.MULTIREGION, CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor,
-                                    CUDA_PATCH=cuda_patch, CUDA_DRIVER_VERSION=driver_version),
-            config.VERSION_MAP[branch]["cuda"]["hash"],
-            CUDA_TOOLKIT_GS_URI.format(MULTIREGION=config.MULTIREGION, CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor,
-                                       CUDA_PATCH=cuda_patch, CUDA_DRIVER_VERSION=driver_version)
+        logger.info(
+            f"Downloading CUDA installation kit for {branch} branch ({cuda_major}.{cuda_minor}.{cuda_patch})..."
         )
 
-    def download_driver_installer(self, branch: str, rtx_vw_enabled: bool) -> pathlib.Path:
+        return self.download_file(
+            CUDA_TOOLKIT_URL.format(
+                MULTIREGION=config.MULTIREGION,
+                CUDA_MAJOR=cuda_major,
+                CUDA_MINOR=cuda_minor,
+                CUDA_PATCH=cuda_patch,
+                CUDA_DRIVER_VERSION=driver_version,
+            ),
+            config.VERSION_MAP[branch]["cuda"]["hash"],
+            CUDA_TOOLKIT_GS_URI.format(
+                MULTIREGION=config.MULTIREGION,
+                CUDA_MAJOR=cuda_major,
+                CUDA_MINOR=cuda_minor,
+                CUDA_PATCH=cuda_patch,
+                CUDA_DRIVER_VERSION=driver_version,
+            ),
+        )
+
+    def download_driver_installer(
+        self, branch: str, rtx_vw_enabled: bool
+    ) -> pathlib.Path:
 
         driver_key = "rtx-driver" if rtx_vw_enabled else "driver"
         driver_version = config.VERSION_MAP[branch][driver_key]["version"]
         logger.info(f"Downloading driver for {branch} branch ({driver_version})...")
 
         return self.download_file(
-            DRIVER_URL.format(MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version),
+            DRIVER_URL.format(
+                MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version
+            ),
             config.VERSION_MAP[branch][driver_key]["hash"],
-            DRIVER_GS_URI.format(MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version)
+            DRIVER_GS_URI.format(
+                MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version
+            ),
         )
 
     def download_file(
@@ -726,7 +776,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             )
 
     @staticmethod
-    def verify_installation_mode_and_branch(mode: str, branch: str, rtx_vw_enabled: bool) -> (str, str):
+    def verify_installation_mode_and_branch(
+        mode: str, branch: str, rtx_vw_enabled: bool
+    ) -> (str, str):
         """
         Check if the previously used installation method is the same as the current one. If it's not, abort the process
         and display a message about the problem.
@@ -740,14 +792,18 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         assert branch in ("prod", "nfb", "lts")
 
         if rtx_vw_enabled and (branch != "prod" or mode != "binary"):
-            logger.info("RTX Virtual Workstation detected. Switching to prod branch (binary mode) for driver installation.")
-            branch="prod"
-            mode="binary"
+            logger.info(
+                "RTX Virtual Workstation detected. Switching to prod branch (binary mode) for driver installation."
+            )
+            branch = "prod"
+            mode = "binary"
 
         if mode == "repo" and branch == "lts":
-            raise RuntimeError("The LTS driver branch is supported only in binary installation mode. "
-                               "Please use --installation-mode=binary and --installation-branch=lts to install "
-                               "LTS driver branch.")
+            raise RuntimeError(
+                "The LTS driver branch is supported only in binary installation mode. "
+                "Please use --installation-mode=binary and --installation-branch=lts to install "
+                "LTS driver branch."
+            )
 
         if not mode_file.exists():
             # First run, no mode file exists, we make it and set the mode

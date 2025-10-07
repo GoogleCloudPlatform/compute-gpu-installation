@@ -137,6 +137,7 @@ def zipapp_gs_url(
     blob.acl.save()
     yield f"gs://{gs_bucket.name}/{blob.name}"
 
+
 @pytest.fixture(scope="session")
 def vpc_network():
     """

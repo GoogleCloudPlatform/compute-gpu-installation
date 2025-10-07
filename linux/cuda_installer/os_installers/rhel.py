@@ -60,7 +60,7 @@ class RHELInstaller(DNFSystemInstaller):
 
         try:
             logger.info("Installing GPU driver...")
-            driver_version = VERSION_MAP[branch]["driver"]["version"].split('.')[0]
+            driver_version = VERSION_MAP[branch]["driver"]["version"].split(".")[0]
             self.run(f"dnf -y module enable nvidia-driver:{driver_version}-dkms")
             self.run(f"dnf -y module install nvidia-driver:{driver_version}-dkms")
         finally:

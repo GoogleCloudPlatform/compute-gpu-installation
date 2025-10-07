@@ -33,19 +33,21 @@ BUILD_ZONE = "europe-west4-c"
 @pytest.mark.parametrize(
     "mode,branch,base_os", itertools.product(MODES, BRANCHES, BASE_IMAGES_MAP.keys())
 )
-def test_image_building(zipapp_file_path: str, mode: str, branch: str, base_os: str, vpc_network: str):
+def test_image_building(
+    zipapp_file_path: str, mode: str, branch: str, base_os: str, vpc_network: str
+):
     """
     Execute the cuda_installer.pyz image builder to prepare an image, them make a VM from it and see if it works.
     """
-    if base_os == 'debian-12' and mode == 'repo' and branch == 'prod':
+    if base_os == "debian-12" and mode == "repo" and branch == "prod":
         pytest.skip("Debian 12 doesn't support repo x prod installation.")
-    if branch == 'lts' and mode == 'repo':
+    if branch == "lts" and mode == "repo":
         pytest.skip("LTS branch doesn't work for repo mode.")
     test_id = uuid.uuid4().hex[:8]
     test_image_name = f"test-image{base_os}-{mode}-{branch}-{test_id}"
 
     new_env = copy.copy(os.environ)
-    new_env['CUDA_INSTALLER_DEBUG'] = 'True'
+    new_env["CUDA_INSTALLER_DEBUG"] = "True"
 
     process = subprocess.run(
         [
@@ -109,7 +111,7 @@ def test_image_building(zipapp_file_path: str, mode: str, branch: str, base_os: 
                     stderr=subprocess.PIPE,
                 )
             except subprocess.CalledProcessError as err:
-                if b'ZONE_RESOURCE_POOL_EXHAUSTED' in err.stderr:
+                if b"ZONE_RESOURCE_POOL_EXHAUSTED" in err.stderr:
                     continue
             else:
                 break
