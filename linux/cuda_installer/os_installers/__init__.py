@@ -186,22 +186,22 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         logger.info("Installing prerequisite packages and updating kernel...")
         try:
             self._install_prerequisites()
+
+            if installation_mode == "binary":
+                self._binary_install_driver(
+                    secure_boot_public_key,
+                    secure_boot_private_key,
+                    ignore_no_gpu,
+                    branch,
+                    rtx_vw_enabled,
+                )
+            else:
+                self._add_nvidia_repo()
+                self._repo_install_driver(
+                    secure_boot_public_key, secure_boot_private_key, branch
+                )
         except RebootRequired:
             self.reboot()
-
-        if installation_mode == "binary":
-            self._binary_install_driver(
-                secure_boot_public_key,
-                secure_boot_private_key,
-                ignore_no_gpu,
-                branch,
-                rtx_vw_enabled,
-            )
-        else:
-            self._add_nvidia_repo()
-            self._repo_install_driver(
-                secure_boot_public_key, secure_boot_private_key, branch
-            )
 
     def _binary_install_driver(
         self,
@@ -230,6 +230,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         else:
             self.run(f"sh {installer_path} -s", check=True)
 
+        if rtx_vw_enabled:
+            self._disable_gsp_firmware()
+
         if self.verify_driver() or ignore_no_gpu:
             self.lock_kernel_updates()
             logger.info("GPU driver installation completed!")
@@ -246,6 +249,29 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         branch: str = "prod",
     ):
         raise NotImplementedError
+
+
+    def _disable_gsp_firmware(self):
+        nvidia_smi_output = self.run("nvidia-smi -q", silent=True).stdout.splitlines()
+        for line in nvidia_smi_output:
+            if "GSP Firmware Version" in line:
+                break
+        else:
+            logger.warning("Couldn't determine the state of GSP firmware.")
+            return
+
+        if line.strip().endswith("N/A"):
+            # GSP already disabled
+            return
+
+        # Following instructions from
+        # https://docs.nvidia.com/vgpu/latest/grid-vgpu-user-guide/index.html#disabling-gsp
+        conf_file_path = pathlib.Path('/etc/modprobe.d/nvidia.conf')
+        with conf_file_path.open(mode='a') as conf_file:
+            conf_file.write("options nvidia NVreg_EnableGpuFirmware=0\n")
+            conf_file.flush()
+        logger.info("GSP firmware disabled by writing to /etc/modprobe.d/nvidia.conf. Rebooting system now.")
+        raise RebootRequired
 
     @abc.abstractmethod
     def _repo_uninstall_driver(self):
