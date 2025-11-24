@@ -3,9 +3,6 @@
 This script installs the latest supported NVIDIA GPU drivers for Google Cloud
 Windows VM on Compute Engine.
 
-This script supports both the G2, A2, and N1 series. On N1 and A2 VMs, it also
-installs the CUDA toolkit.
-
 ## Usage Instructions
 
 To use this script you must run it as an Administrator:

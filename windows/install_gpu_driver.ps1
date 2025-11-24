@@ -1,119 +1,170 @@
-#Requires -RunAsAdministrator
-
 <#
- # Copyright 2021 Google Inc.
- #
- # Licensed under the Apache License, Version 2.0 (the "License");
- # you may not use this file except in compliance with the License.
- # You may obtain a copy of the License at
- #
- #     http://www.apache.org/licenses/LICENSE-2.0
- #
- # Unless required by applicable law or agreed to in writing, software
- # distributed under the License is distributed on an "AS IS" BASIS,
- # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- # See the License for the specific language governing permissions and
- # limitations under the License.
+.SYNOPSIS
+    Automated NVIDIA Driver Installer for Windows Server 2019+
+    
+.DESCRIPTION
+    1. Determines GCP Multi-region based on instance metadata.
+    2. Checks for NVIDIA GPU presence using PCI Vendor ID (10DE).
+    3. Checks if nvidia-smi is already installed.
+    4. Downloads the region-specific driver installer.
+    5. Silently installs the driver.
+    6. Cleans up installer artifacts.
+
+.NOTES
+    Run this script as Administrator.
 #>
 
-# Determine which management interface to use
-#
-# Get-WmiObject is deprecated and removed in Powershell 6.0+
-# https://learn.microsoft.com/en-us/powershell/scripting/whats-new/differences-from-windows-powershell?view=powershell-7#cmdlets-removed-from-powershell
-#
-# We maintain backwards compabitility with older versions of Powershell by using Get-WmiObject if available
+$ErrorActionPreference = "Stop"
+
+# --- Constants & Config ---
+$DriverVersionFilename = "581.15_grid_win10_win11_server2022_dch_64bit_international.exe"
+$TempDir = [System.IO.Path]::GetTempPath()
+$InstallerName = "nvidia_driver_installer.exe"
+$InstallerPath = Join-Path -Path $TempDir -ChildPath $InstallerName
+
+# --- Functions for Region Detection ---
+function Get-GcpMultiRegion {
+    # Map region prefixes to multi-regions
+    $RegionMap = @{
+        "africa"       = "eu"
+        "asia"         = "asia"
+        "australia"    = "asia"
+        "europe"       = "eu"
+        "me"           = "eu"
+        "northamerica" = "us"
+        "southamerica" = "us"
+        "us"           = "us"
+    }
+
+    Write-Host "Detecting GCP Region..." -ForegroundColor Cyan
+
+    try {
+        # Query Google Metadata server for the zone
+        # Timeout included to prevent hanging if not on GCP or metadata is unreachable
+        $ZoneUrl = "http://metadata.google.internal/computeMetadata/v1/instance/zone"
+        $Response = Invoke-RestMethod -Uri $ZoneUrl -Headers @{"Metadata-Flavor" = "Google"} -TimeoutSec 5 -ErrorAction Stop
+
+        # Response format is usually: projects/PROJECT_ID/zones/REGION-ZONE (e.g., projects/123/zones/us-central1-a)
+        $ZoneName = $Response.Split('/')[-1]
+
+        # Get the region prefix (e.g., 'us' from 'us-central1-a')
+        $RegionPrefix = $ZoneName.Split('-')[0]
+
+        if ($RegionMap.ContainsKey($RegionPrefix)) {
+            $MultiRegion = $RegionMap[$RegionPrefix]
+            Write-Host "Region detected: $RegionPrefix -> Multi-region: $MultiRegion" -ForegroundColor Green
+            return $MultiRegion
+        }
+    }
+    catch {
+        Write-Warning "Could not detect GCP region via metadata server. Defaulting to 'us'."
+    }
+
+    return "us"
+}
+
+# --- Functions for GPU Detection ---
 function Get-Mgmt-Command {
     $Command = 'Get-CimInstance'
-    if (Get-Command Get-WmiObject 2>&1>$null) {
+    if (Get-Command Get-WmiObject -ErrorAction SilentlyContinue) {
         $Command = 'Get-WmiObject'
     }
     return $Command
 }
 
-# Check if the GPU exists with Windows Management Instrumentation, returning the device ID if it exists
 function Find-GPU {
     $MgmtCommand = Get-Mgmt-Command
     try {
+        # Query specifically for NVIDIA (VEN_10DE) in Display or 3D Controller classes
         $Command = "(${MgmtCommand} -query ""select DeviceID from Win32_PNPEntity Where (deviceid Like '%PCI\\VEN_10DE%') and (PNPClass = 'Display' or Name = '3D Video Controller')"" | Select-Object DeviceID -ExpandProperty DeviceID).substring(13,8)"
         $dev_id = Invoke-Expression -Command $Command
         return $dev_id
     }
     catch {
-        Write-Output "There doesn't seem to be a GPU unit connected to your system."
+        Write-Warning "There doesn't seem to be a GPU unit connected to your system."
         return ""
     }
 }
 
-# Check if the Driver is already installed
-function Check-Driver {
-    try {
-        &'nvidia-smi.exe'
-        Write-Output 'Driver is already installed.'
-        Exit
-    }
-    catch {
-        Write-Output 'Driver is not installed, proceeding with installation'
-    }
+# --- Step 0: Determine Download URL ---
+$MultiRegion = Get-GcpMultiRegion
+$DriverUrl = "https://storage.googleapis.com/compute-gpu-installation-$MultiRegion/windows/$DriverVersionFilename"
+
+# --- Step 1: Check for GPU Presence ---
+Write-Host "Step 1: Checking for NVIDIA GPU (PCI ID Check)..." -ForegroundColor Cyan
+
+$gpuId = Find-GPU
+
+if ([string]::IsNullOrWhiteSpace($gpuId)) {
+    Write-Warning "No NVIDIA GPU (VEN_10DE) detected via PnP Entity check. Exiting."
+    Exit
+} else {
+    Write-Host "GPU Detected with Device ID substring: $gpuId" -ForegroundColor Green
 }
 
-# Install the driver
-function Install-Driver {
+# --- Step 2: Check for nvidia-smi ---
+Write-Host "Step 2: Checking for existing installation (nvidia-smi)..." -ForegroundColor Cyan
 
-    # Check if the GPU exists and if the driver is already installed
-    $gpu_dev_id = Find-GPU
+$smiCommand = Get-Command "nvidia-smi" -ErrorAction SilentlyContinue
+$smiPathDefault = "C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe"
+$smiPathSystem = "C:\Windows\System32\nvidia-smi.exe"
 
-    # Set the correct URL, filename, and arguments to the installer
-    $url = 'https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda_12.1.1_531.14_windows.exe';
-    $file_dir = 'C:\NVIDIA-Driver\cuda_12.1.1_531.14_windows.exe';
-    $install_args = '/s /n';
-    $os_name = Invoke-Expression -Command 'systeminfo | findstr /B /C:"OS Name"'
-    if ($os_name.Contains("Microsoft Windows Server 2016 Datacenter")) {
-        # Windows Server 2016 needs an older version of the installer to work properly
-        $url = "https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_522.06_windows.exe"
-        $file_dir = "C:\NVIDIA-Driver\cuda_11.8.0_522.06_windows.exe"
-        # Windows 2016 also requires manual setting of TLS version
-        [Net.ServicePointManager]::SecurityProtocol = 'Tls12'
-    }
-    if ("DEV_102D".Equals($gpu_dev_id)) {
-      # K80 GPUs must use an older driver/CUDA version
-      $url = 'https://developer.download.nvidia.com/compute/cuda/11.4.0/network_installers/cuda_11.4.0_win10_network.exe';
-      $file_dir = 'C:\NVIDIA-Driver\cuda_11.4.0_win10_network.exe';
-    }
-    if ("DEV_27B8".Equals($gpu_dev_id)) {
-      # The latest CUDA bundle (12.1.1) does not support L4 GPUs, so this script
-      # only installs the driver (version 528.89). There is a different installer
-      # for Windows server 2016/2019/2022 and Windows 10/11, so use systeminfo
-      # to determine which installer to use.
-      $install_args = '/s /noeula /noreboot';
-      if ($os_name.Contains("Server")) {
-        $url = 'https://us.download.nvidia.com/tesla/528.89/528.89-data-center-tesla-desktop-winserver-2016-2019-2022-dch-international.exe';
-        $file_dir = 'C:\NVIDIA-Driver\528.89-data-center-tesla-desktop-winserver-2016-2019-2022-dch-international.exe';
-      } else {
-        $url = 'https://us.download.nvidia.com/tesla/528.89/528.89-data-center-tesla-desktop-win10-win11-64bit-dch-international.exe';
-        $file_dir = 'C:\NVIDIA-Driver\528.89-data-center-tesla-desktop-win10-win11-64bit-dch-international.exe';
-      }
-    }
-    Check-Driver
+if ($smiCommand -or (Test-Path $smiPathDefault) -or (Test-Path $smiPathSystem)) {
+    Write-Warning "nvidia-smi is already present. Driver appears to be installed. Exiting."
+    Exit
+} else {
+    Write-Host "nvidia-smi not found. Proceeding with installation." -ForegroundColor Green
+}
 
-    # Create the folder for the driver download
-    if (!(Test-Path -Path 'C:\NVIDIA-Driver')) {
-        New-Item -Path 'C:\' -Name 'NVIDIA-Driver' -ItemType 'directory' | Out-Null
-    }
+# --- Step 3: Download Installer ---
+Write-Host "Step 3: Downloading driver..." -ForegroundColor Cyan
+Write-Host "Source: $DriverUrl" -ForegroundColor Gray
 
-    # Download the file to a specified directory
-    # Disabling progress bar due to https://github.com/GoogleCloudPlatform/compute-gpu-installation/issues/29
-    $ProgressPreference_tmp = $ProgressPreference
+# Ensure TLS 1.2 is enabled for the download
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+try {
+    # CRITICAL PERFORMANCE FIX:
+    # The Invoke-WebRequest progress bar significantly slows down downloads in Windows PowerShell 5.1.
+    # We disable it temporarily to speed up the transfer.
+    $OriginalProgressPreference = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue'
-    Write-Output 'Downloading the driver installer...'
-    Invoke-WebRequest $url -OutFile $file_dir
-    $ProgressPreference = $ProgressPreference_tmp
-    Write-Output 'Download complete!'
 
-    # Install the file with the specified path from earlier as well as the RunAs admin option
-    Write-Output 'Running the driver installer...'
-    Start-Process -FilePath $file_dir -ArgumentList $install_args -Wait
-    Write-Output 'Done!'
+    Invoke-WebRequest -Uri $DriverUrl -OutFile $InstallerPath -UseBasicParsing
+
+    # Restore preference
+    $ProgressPreference = $OriginalProgressPreference
+
+    Write-Host "Download complete. Saved to: $InstallerPath" -ForegroundColor Green
+}
+catch {
+    Write-Error "Failed to download the installer. Error: $_"
+    Exit
 }
 
-# Run the functions
-Install-Driver
+# --- Step 4 & 5: Execute and Wait ---
+Write-Host "Step 4: Executing installer..." -ForegroundColor Cyan
+Write-Host "Flags used: /s /n (Silent, No Reboot)" -ForegroundColor Gray
+
+try {
+    # Start the process with /s (silent) and /n (no reboot)
+    $process = Start-Process -FilePath $InstallerPath -ArgumentList "/s", "/n" -PassThru -Wait -Verb RunAs
+    
+    if ($process.ExitCode -eq 0) {
+        Write-Host "Installation finished successfully." -ForegroundColor Green
+    } else {
+        Write-Warning "Installation finished with Exit Code: $($process.ExitCode). This might indicate a reboot is required or a non-fatal warning."
+    }
+}
+catch {
+    Write-Error "Failed to execute installer. Error: $_"
+    Exit
+}
+
+# --- Cleanup ---
+Write-Host "Cleaning up temporary files..." -ForegroundColor Cyan
+if (Test-Path $InstallerPath) {
+    Remove-Item -Path $InstallerPath -Force
+}
+
+Write-Host "Done." -ForegroundColor Green
