@@ -17,6 +17,8 @@
 $ErrorActionPreference = "Stop"
 
 # --- Constants & Config ---
+# Paste the SHA256 hash below. If empty, verification is skipped.
+$ExpectedSha256 = "55403a706d06684771d0181a63e3f0070323745b54c6783e96537ae1e171de57"
 $DriverVersionFilename = "581.15_grid_win10_win11_server2022_dch_64bit_international.exe"
 $TempDir = [System.IO.Path]::GetTempPath()
 $InstallerName = "nvidia_driver_installer.exe"
@@ -136,9 +138,24 @@ try {
     $ProgressPreference = $OriginalProgressPreference
 
     Write-Host "Download complete. Saved to: $InstallerPath" -ForegroundColor Green
+
+    # --- Step 3.1: Verify Checksum ---
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSha256)) {
+        Write-Host "Verifying SHA256 checksum..." -ForegroundColor Cyan
+        $ComputedHash = (Get-FileHash -Path $InstallerPath -Algorithm SHA256).Hash
+
+        if ($ComputedHash -eq $ExpectedSha256) {
+            Write-Host "Checksum verified." -ForegroundColor Green
+        } else {
+            # Clean up the bad file immediately
+            Remove-Item -Path $InstallerPath -Force
+            Write-Error "Checksum mismatch! Expected: $ExpectedSha256, Calculated: $ComputedHash"
+            Exit
+        }
+    }
 }
 catch {
-    Write-Error "Failed to download the installer. Error: $_"
+    Write-Error "Failed to download or verify the installer. Error: $_"
     Exit
 }
 
@@ -149,7 +166,7 @@ Write-Host "Flags used: /s /n (Silent, No Reboot)" -ForegroundColor Gray
 try {
     # Start the process with /s (silent) and /n (no reboot)
     $process = Start-Process -FilePath $InstallerPath -ArgumentList "/s", "/n" -PassThru -Wait -Verb RunAs
-    
+
     if ($process.ExitCode -eq 0) {
         Write-Host "Installation finished successfully." -ForegroundColor Green
     } else {
