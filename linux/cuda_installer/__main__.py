@@ -18,6 +18,7 @@ import os
 import pathlib
 import sys
 from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 import image_builder
 from config import VERSION
@@ -277,7 +278,10 @@ def detect_virtual_workstation():
         "http://metadata.google.internal/computeMetadata/v1/instance/",
         headers={"Metadata-Flavor": "Google"},
     )
-    response = urlopen(request).read().decode()
+    try:
+        response = urlopen(request).read().decode()
+    except URLError:
+        return False
     return "nvidia-grid-license" in response
 
 
