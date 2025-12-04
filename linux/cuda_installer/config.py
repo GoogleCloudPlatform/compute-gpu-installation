@@ -26,7 +26,7 @@ except PermissionError:
 if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
     VERSION = "debug"
 else:
-    VERSION = "v1.7.0"
+    VERSION = "v1.7.1"
 
 VERSION_MAP = {
     "prod": {
