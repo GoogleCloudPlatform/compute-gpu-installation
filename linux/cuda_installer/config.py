@@ -26,7 +26,7 @@ except PermissionError:
 if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
     VERSION = "debug"
 else:
-    VERSION = "v1.7.1"
+    VERSION = "v1.8.0"
 
 VERSION_MAP = {
     "prod": {
@@ -141,7 +141,7 @@ NVIDIA_KEYRING_SHA256_SUMS = {
     },
     "debian": {
         "12": "e7f219eab6fe4819cdb5c15b98233dc3420302d9c00883219cd3d896857cf48d",
-        # "13": "e7f219eab6fe4819cdb5c15b98233dc3420302d9c00883219cd3d896857cf48d"
+        "13": "dd28f1f6ba0038180d6b23f846cefca1e3de4c9327751665241370bacea452a1"
     },
 }
 
@@ -156,3 +156,20 @@ CUDA_LIB_FOLDER = "/usr/local/cuda-{CUDA_MAJOR}.{CUDA_MINOR}/lib64"
 NVIDIA_PERSISTANCED_INSTALLER = (
     "/usr/share/doc/NVIDIA_GLX-1.0/samples/nvidia-persistenced-init.tar.bz2"
 )
+
+# Mapping the certificate files to their SHA1 hashes.
+# See more: https://docs.cloud.google.com/compute/shielded-vm/docs/creating-shielded-images#default_certificates
+SECURE_BOOT_CERTS = {
+    'KEK': [
+        ('MicCorKEKCA2011_2011-06-24.crt', '31590bfd89c9d74ed087dfac66334b3931254b30'),
+        ('microsoft_corporation_kek_2k_ca_2023.crt', '459ab6fb5e284d272d5e3e6abc8ed663829d632b')
+    ],
+    'DB': [
+        ('MicWinProPCA2011_2011-10-19.crt', '580a6f4cc4e4b669b9ebdc1b2b3e087b80d0678d'),
+        ('MicCorUEFCA2011_2011-06-27.crt', '46def63b5ce61cf8ba0de2e6639c1019d0ed14f3'),
+        ('microsoft_uefi_ca_2023.crt', 'b5eeb4a6706048073f0ed296e7f580a790b59eaa'),
+        ('windows_uefi_ca_2023.crt', '45a0fa32604773c82433c3b7d59e7466b3ac0c67')
+    ]
+}
+
+SECURE_BOOT_CERTS_URL_TEMPLATE = "https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/certificates/{FILENAME}"

@@ -13,16 +13,20 @@
 # limitations under the License.
 
 import atexit
+import hashlib
+import itertools
 import pathlib
 import subprocess
 import sys
 import tempfile
 import time
+import urllib
 import uuid
 from argparse import Namespace
 from typing import Iterable
 
-from config import region_or_zone_to_multiregion, VERSION
+from config import region_or_zone_to_multiregion, VERSION, SECURE_BOOT_CERTS, SECURE_BOOT_CERTS_URL_TEMPLATE, \
+    MULTIREGION
 
 BASE_IMAGES_MAP = {
     # Debian
@@ -243,28 +247,25 @@ class Builder:
 
     def download_certificates(self) -> Iterable[str]:
         """Locally downloads Microsoft certificates. Needed for Secure Boot to work."""
-        try:
-            subprocess.run(
-                f"curl -L https://storage.googleapis.com/compute-gpu-installation-{self.multiregion}/certificates/MicCorUEFCA2011_2011-06-27.crt --output {self.tmp_dir.name}/MicCorUEFCA2011_2011-06-27.crt",
-                shell=True,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            subprocess.run(
-                f"curl -L https://storage.googleapis.com/compute-gpu-installation-{self.multiregion}/certificates/MicWinProPCA2011_2011-10-19.crt --output {self.tmp_dir.name}/MicWinProPCA2011_2011-10-19.crt",
-                shell=True,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except subprocess.SubprocessError as err:
-            print("Failed to download default certificates.")
-            raise err
-        return (
-            f"{self.tmp_dir.name}/MicCorUEFCA2011_2011-06-27.crt",
-            f"{self.tmp_dir.name}/MicWinProPCA2011_2011-10-19.crt",
-        )
+        print("Downloading default Secure Boot certificates...")
+        certs = []
+        for filename, sha1_hash in SECURE_BOOT_CERTS['DB']:
+            try:
+                url = SECURE_BOOT_CERTS_URL_TEMPLATE.format(MULTIREGION=self.multiregion, FILENAME=urllib.parse.quote_plus(filename))
+                subprocess.run(
+                    f"curl -L '{url}' --output '{self.tmp_dir.name}/{filename}'",
+                    shell=True,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                assert hashlib.sha1(open(f"{self.tmp_dir.name}/{filename}", "rb").read()).hexdigest() == sha1_hash
+            except subprocess.SubprocessError as err:
+                print("Failed to download default certificates.")
+                raise err
+            certs.append(f"{self.tmp_dir.name}/{filename}")
+        print("Downloaded {len(certs)} certificates.")
+        return certs
 
     def build_image(self, certs: Iterable[str]):
         """Creates the disk image based on the disk of the build VM."""
