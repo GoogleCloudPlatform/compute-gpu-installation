@@ -14,7 +14,6 @@
 
 import atexit
 import hashlib
-import itertools
 import pathlib
 import subprocess
 import sys
@@ -25,12 +24,12 @@ import uuid
 from argparse import Namespace
 from typing import Iterable
 
-from config import region_or_zone_to_multiregion, VERSION, SECURE_BOOT_CERTS, SECURE_BOOT_CERTS_URL_TEMPLATE, \
-    MULTIREGION
+from config import region_or_zone_to_multiregion, VERSION, SECURE_BOOT_CERTS, SECURE_BOOT_CERTS_URL_TEMPLATE
 
 BASE_IMAGES_MAP = {
     # Debian
     "debian-12": "image-family=debian-12,image-project=debian-cloud",
+    "debian-13": "image-family=debian-13,image-project=debian-cloud",
     # Red Hat
     "rhel-8": "image-family=rhel-8,image-project=rhel-cloud",
     "rhel-9": "image-family=rhel-9,image-project=rhel-cloud",
@@ -86,11 +85,11 @@ class Builder:
         print("Using temp dir: ", self.tmp_dir)
 
         if (
-            self.base_os_image == "debian-12"
+            self.base_os_image.startswith("debian")
             and self.installation_mode == "repo"
             and self.branch == "prod"
         ):
-            print("Production branch is not supported in 'repo' mode for Debian 12.")
+            print("Production branch is not supported in 'repo' mode for Debian.")
             sys.exit(1)
 
         self.pub_key, self.priv_key = self.get_signing_keys(args)

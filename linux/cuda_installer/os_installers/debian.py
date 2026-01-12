@@ -147,7 +147,7 @@ class DebianInstaller(LinuxInstaller):
             driver_version = VERSION_MAP[branch]["driver"]["version"].split(".")[0]
             logger.info("Installing GPU driver...")
             self.run(f"apt-get install -yq cuda-drivers-{driver_version}")
-            self.run(f"apt-mark hold cuda-drivers-{driver_version}")
+            self.run(f"apt-mark hold cuda-drivers")
         finally:
             if secure_boot_public_key and secure_boot_private_key:
                 self.remove_custom_dkms_signing_keys()

@@ -28,52 +28,53 @@ if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
 else:
     VERSION = "v1.8.0"
 
+# Hashes in this map are SHA256
 VERSION_MAP = {
     "prod": {
         "driver": {
-            "version": "580.82.07",
-            "hash": "061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c",
+            "version": "580.105.08",
+            "hash": "d9c6e8188672f3eb74dd04cfa69dd58479fa1d0162c8c28c8d17625763293475",
         },
         "rtx-driver": {
-            "version": "580.82.07-grid",
-            "hash": "387dc4927ffeba00ecc8c2a561c3f2cfb1c486d2e63105ce1bf52572483a63dc",
+            "version": "580.105.08-grid",
+            "hash": "6372d1058fc1434a7f42b9bde02dbd266ec45f1c3253682b860c82427d6c33db",
         },
         "cuda": {
             "major": "13",
             "minor": "0",
-            "patch": "1",
-            "driver": "580.82.07",
-            "hash": "4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100",
+            "patch": "2",
+            "driver": "580.95.05",
+            "hash": "81a5d0d0870ba2022efb0a531dcc60adbdc2bbff7b3ef19d6fd6d8105406c775",
             "samples": "13.0",
             "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
         },
     },
     "nfb": {
         "driver": {
-            "version": "575.57.08",
-            "hash": "2aa701dac180a7b20a6e578cccd901ded8d44e57d60580f08f9d28dd1fffc6f2",
+            "version": "590.48.01",
+            "hash": "b9e2f80693781431cc87f4cd29109e133dcecb50a50d6b68d4b3bf2d696bd689",
         },
         "cuda": {
-            "major": "12",
-            "minor": "9",
-            "patch": "1",
-            "driver": "575.57.08",
-            "hash": "0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a",
-            "samples": "12.9",
-            "samples_hash": "2e67e1f6bdb15bf11b21e07e988e2f9f60fb054eff51ef01cebdd47229788015",
+            "major": "13",
+            "minor": "1",
+            "patch": "0",
+            "driver": "590.44.01",
+            "hash": "6b4fdf2694b3d7afbc526f26412b4cf4f050b202324455053307310f53b323a7",
+            "samples": "13.1",
+            "samples_hash": "03d7748a773fcd2350c2de88f2d167252c78ea90a52e229e7eb2a6922e3ba350",
         },
     },
     "lts": {
         "driver": {
-            "version": "580.82.07",
-            "hash": "061e48e11fe552232095811d0b1cea9b718ba2540d605074ff227fce0628798c",
+            "version": "580.105.08",
+            "hash": "d9c6e8188672f3eb74dd04cfa69dd58479fa1d0162c8c28c8d17625763293475",
         },
         "cuda": {
             "major": "13",
             "minor": "0",
-            "patch": "1",
-            "driver": "580.82.07",
-            "hash": "4c7ac59d1f41d67be27d140a4622801738ad71088570a0facfd6ec878a4c4100",
+            "patch": "2",
+            "driver": "580.95.05",
+            "hash": "81a5d0d0870ba2022efb0a531dcc60adbdc2bbff7b3ef19d6fd6d8105406c775",
             "samples": "13.0",
             "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
         },

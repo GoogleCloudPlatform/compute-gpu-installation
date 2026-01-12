@@ -30,7 +30,7 @@ VPC_NETWORK = "cuda-installer-test-network"
 
 OPERATING_SYSTEMS = (
     ("debian-cloud", "debian-12"),
-    # ("debian-cloud", "debian-13"),
+    ("debian-cloud", "debian-13"),
     ("rhel-cloud", "rhel-8"),
     ("rhel-cloud", "rhel-9"),
     ("rocky-linux-cloud", "rocky-linux-8"),

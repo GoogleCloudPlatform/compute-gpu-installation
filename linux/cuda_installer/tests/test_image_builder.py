@@ -39,7 +39,7 @@ def test_image_building(
     """
     Execute the cuda_installer.pyz image builder to prepare an image, them make a VM from it and see if it works.
     """
-    if base_os == "debian-12" and mode == "repo" and branch == "prod":
+    if base_os.startswith("debian") and mode == "repo" and branch == "prod":
         pytest.skip("Debian 12 doesn't support repo x prod installation.")
     if branch == "lts" and mode == "repo":
         pytest.skip("LTS branch doesn't work for repo mode.")
