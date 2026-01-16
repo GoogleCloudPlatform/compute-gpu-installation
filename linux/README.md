@@ -184,8 +184,8 @@ This will save `mok.der` and `mok.key` to the specified directory.
 
 ### Other Options
 
-*   `--base-image <OS>`: Specify the base OS image. Supported options include `debian-12`, `rhel-8`, `rhel-9`, 
-        `rocky-8`, `rocky-9`, `ubuntu-22`, `ubuntu-24`. Defaults to `ubuntu-24`.
+*   `--base-image <OS>`: Specify the base OS image. Supported options include `debian-12`, `debian-13`, `rhel-8`, 
+    `rhel-9`, `rocky-8`, `rocky-9`, `ubuntu-22`, `ubuntu-24`. Defaults to `ubuntu-24`.
 *   `--driver-only`: Use this flag if you only want to install the NVIDIA driver and skip the CUDA Toolkit installation.
 *   `--installation-mode <MODE>`: Choose between `repo` (default) or `binary` installation methods.
 *   `--installation-branch <BRANCH>`: Choose between `prod` (production branch) and `nfb` (new feature branch). Default: `prod`.

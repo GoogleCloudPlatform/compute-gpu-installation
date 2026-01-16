@@ -183,7 +183,7 @@ def parse_args():
 
     image_builder.add_argument(
         "--base-image",
-        help="Base image to build upon. Available options: debian-12, rhel-8, rhel-9, rocky-8, rocky-9, ubuntu-22 and ubuntu-24. Default: ubuntu-24",
+        help="Base image to build upon. Available options: debian-12, debian-13, rhel-8, rhel-9, rocky-8, rocky-9, ubuntu-22 and ubuntu-24. Default: ubuntu-24",
         default="ubuntu-24",
     )
 
