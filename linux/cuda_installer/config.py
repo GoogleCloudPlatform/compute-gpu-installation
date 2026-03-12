@@ -26,18 +26,18 @@ except PermissionError:
 if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
     VERSION = "debug"
 else:
-    VERSION = "v1.8.0"
+    VERSION = "v1.8.1"
 
 # Hashes in this map are SHA256
 VERSION_MAP = {
     "prod": {
         "driver": {
-            "version": "580.105.08",
-            "hash": "d9c6e8188672f3eb74dd04cfa69dd58479fa1d0162c8c28c8d17625763293475",
+            "version": "580.126.20",
+            "hash": "a055dbeae72438f20335b41929a060148c82c69d2147c0d922660e8c5a265eb1",
         },
         "rtx-driver": {
-            "version": "580.105.08-grid",
-            "hash": "6372d1058fc1434a7f42b9bde02dbd266ec45f1c3253682b860c82427d6c33db",
+            "version": "580.126.09-grid",
+            "hash": "e12c87b74b68cfde53f342c4c66e06d0a8bb4b4c34ec9b78a499e67ffc47903d",
         },
         "cuda": {
             "major": "13",
@@ -57,17 +57,17 @@ VERSION_MAP = {
         "cuda": {
             "major": "13",
             "minor": "1",
-            "patch": "0",
-            "driver": "590.44.01",
-            "hash": "6b4fdf2694b3d7afbc526f26412b4cf4f050b202324455053307310f53b323a7",
+            "patch": "1",
+            "driver": "590.48.01",
+            "hash": "24ff323723722781436804b392a48f691cb40de9808095d3e2192d0db6dfb8e4",
             "samples": "13.1",
             "samples_hash": "03d7748a773fcd2350c2de88f2d167252c78ea90a52e229e7eb2a6922e3ba350",
         },
     },
     "lts": {
         "driver": {
-            "version": "580.105.08",
-            "hash": "d9c6e8188672f3eb74dd04cfa69dd58479fa1d0162c8c28c8d17625763293475",
+            "version": "580.126.20",
+            "hash": "a055dbeae72438f20335b41929a060148c82c69d2147c0d922660e8c5a265eb1",
         },
         "cuda": {
             "major": "13",
