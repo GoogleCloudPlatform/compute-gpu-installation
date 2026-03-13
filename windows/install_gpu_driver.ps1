@@ -18,8 +18,8 @@ $ErrorActionPreference = "Stop"
 
 # --- Constants & Config ---
 # Paste the SHA256 hash below. If empty, verification is skipped.
-$ExpectedSha256 = "55403a706d06684771d0181a63e3f0070323745b54c6783e96537ae1e171de57"
-$DriverVersionFilename = "581.15_grid_win10_win11_server2022_dch_64bit_international.exe"
+$ExpectedSha256 = "23758d7365f3e421d481b5c40290f0cc6a1ff44dcf0f50add1d06761cf2a7ae8"
+$DriverVersionFilename = "582.16_grid_win10_win11_server2022_server2025_dch_64bit_international.exe"
 $TempDir = [System.IO.Path]::GetTempPath()
 $InstallerName = "nvidia_driver_installer.exe"
 $InstallerPath = Join-Path -Path $TempDir -ChildPath $InstallerName
