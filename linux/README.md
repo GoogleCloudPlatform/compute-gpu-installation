@@ -12,25 +12,13 @@ but is considered deprecated and should not be used anymore.
 
 The tool supports the following operating systems (x86_64/amd64 architecture):
 
-* Debian: version 12
-* RHEL: versions 8 and 9
-* Rocky: version 8 and 9
+* Debian: version 12 and 13
+* RHEL: versions 8, 9 and 10
+* Rocky: version 8, 9 and 10
 * Ubuntu: version 22 and 24
 
-Some installation methods and branches are unavailable on some of the operating systems.
-
-|              | Binary | Repository |
-|--------------|--------|------------|
-| Debian 12    | ✓      | Only NFB   |
-| RHEL 8       | ✓      | No LTS     |
-| RHEL 9       | ✓      | No LTS     |
-| Rocky 8      | ✓      | No LTS     |
-| Rocky 9      | ✓      | No LTS     |
-| Ubuntu 22.04 | ✓      | No LTS     |
-| Ubuntu 24.04 | ✓      | No LTS     |
-
-✓ - Production, New Feature and LTS branch supported
-NFB = New feature branch
+For repository installation method, the version of the driver and CUDA Toolkit installed 
+depends on the distribution repositories. Sometimes it can even be a "beta" branch version.
 
 Note: Just because an operating system is not listed as supported by this tool,  
 it doesn't mean that it's impossible to install NVIDIA drivers on it. You should check and
@@ -66,15 +54,17 @@ capabilities. The installation mode will also be always `binary` for Virtual Wor
 
 ## Driver versions
 
-This table shows the versions of drivers installed by different versions of the tool. The repository
-installation method will always match the major version of the drivers and CUDA Toolkit installed by
-the binary version.
+This table shows the versions of drivers installed by different versions of the tool in binary
+installation mode. The repository installation method will always depend on the version available
+in the distribution repositories.
 
-| release | new feature branch       | prod branch               | long term support branch   | RTX (Virtual Workstation) |
-|---------|--------------------------|---------------------------|----------------------------|---------------------------|
-| v1.7.0  | 575.57.08 (cuda: 12.9.1) | 580.82.07 (cuda: 13.0.1)  | 580.82.07 (cuda: 13.0.1)   | 580.82.07 (cuda: 13.0.1)  |
-| v1.6.0  | 575.57.08 (cuda: 12.9.1) | 570.172.08 (cuda: 12.8.1) | 535.261.03 (cuda: 12.2.2)  | n/a                       |
-| v1.5.0  | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) | n/a                        | n/a                       |
+| release | new feature branch       | prod branch               | long term support branch  | RTX (Virtual Workstation) |
+|---------|--------------------------|---------------------------|---------------------------|---------------------------|
+| v1.8.1  | 590.48.01 (cuda: 13.1.2) | 580.126.20 (cuda: 13.0.2) | 580.126.20 (cuda: 13.0.2) | 580.126.09 (cuda: 13.0.2) |
+| v1.8.0  | 590.48.01 (cuda: 13.1.1) | 580.105.08 (cuda: 13.0.2) | 580.105.08 (cuda: 13.0.2) | 580.105.08 (cuda: 13.0.2) |
+| v1.7.0  | 575.57.08 (cuda: 12.9.1) | 580.82.07 (cuda: 13.0.1)  | 580.82.07 (cuda: 13.0.1)  | 580.82.07 (cuda: 13.0.1)  |
+| v1.6.0  | 575.57.08 (cuda: 12.9.1) | 570.172.08 (cuda: 12.8.1) | 535.261.03 (cuda: 12.2.2) | n/a                       |
+| v1.5.0  | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) | n/a                       | n/a                       |
 
 
 ## Running the tool

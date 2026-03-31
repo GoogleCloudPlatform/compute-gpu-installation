@@ -81,6 +81,9 @@ VERSION_MAP = {
     },
 }
 
+for branch in VERSION_MAP.keys():
+    VERSION_MAP[branch]["cuda"]["version"] = f"{VERSION_MAP[branch]['cuda']['major']}.{VERSION_MAP[branch]['cuda']['minor']}.{VERSION_MAP[branch]['cuda']['patch']}"
+
 # Check what multi-region should be used to download stuff
 _region_to_multi_map = {
     "africa": "eu",

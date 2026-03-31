@@ -60,9 +60,13 @@ class RHELInstaller(DNFSystemInstaller):
 
         try:
             logger.info("Installing GPU driver...")
-            driver_version = VERSION_MAP[branch]["driver"]["version"].split(".")[0]
-            self.run(f"dnf -y module enable nvidia-driver:{driver_version}-dkms")
-            self.run(f"dnf -y module install nvidia-driver:{driver_version}-dkms")
+            system, version = self._detect_linux_distro()
+            if version in ('8', '9'):
+                self.run(f"dnf -y module enable nvidia-driver:open-dkms")
+                self.run(f"dnf -y module install nvidia-driver:open-dkms")
+            else:
+                self.run(f"dnf -y install nvidia-open")
+
         finally:
             if secure_boot_public_key and secure_boot_private_key:
                 self.remove_custom_dkms_signing_keys()

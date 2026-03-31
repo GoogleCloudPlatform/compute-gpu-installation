@@ -33,9 +33,11 @@ BASE_IMAGES_MAP = {
     # Red Hat
     "rhel-8": "image-family=rhel-8,image-project=rhel-cloud",
     "rhel-9": "image-family=rhel-9,image-project=rhel-cloud",
+    "rhel-10": "image-family=rhel-10,image-project=rhel-cloud",
     # Rocky
     "rocky-8": "image-family=rocky-linux-8,image-project=rocky-linux-cloud",
     "rocky-9": "image-family=rocky-linux-9,image-project=rocky-linux-cloud",
+    "rocky-10": "image-family=rocky-linux-10,image-project=rocky-linux-cloud",
     # Ubuntu
     "ubuntu-22": "image-family=ubuntu-2204-lts,image-project=ubuntu-os-cloud",
     "ubuntu-24": "image-family=ubuntu-2404-lts-amd64,image-project=ubuntu-os-cloud",

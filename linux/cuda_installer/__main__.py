@@ -21,7 +21,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 import image_builder
-from config import VERSION
+from config import VERSION, VERSION_MAP
 
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import LinuxInstaller, debian, ubuntu, rhel, rocky
@@ -98,7 +98,11 @@ def parse_args():
 
     image_builder.add_argument(
         "--installation-branch",
-        help="Select driver  branch to install from. Available branches: nfb, prod and lts. Those will install drivers in versions 575, 570 and 535 respectively with compatible CUDA Toolkit versions (12.9, 12.8 and 12.2). Default: prod.",
+        help=f"Select driver branch to install from. Affects only binary installation mode. "
+             f"Available branches: nfb, prod and lts. "
+             f"Those will install drivers in versions {VERSION_MAP['nfb']['driver']['version']}, "
+             f"{VERSION_MAP['prod']['driver']['version']} and {VERSION_MAP['lts']['driver']['version']} "
+             f"respectively with compatible CUDA Toolkit versions ({VERSION_MAP['nfb']['cuda']['version']}, {VERSION_MAP['prod']['cuda']['version']} and {VERSION_MAP['lts']['cuda']['version']}). Default: prod.",
         required=False,
         default="prod",
         choices=["prod", "nfb", "lts"],
