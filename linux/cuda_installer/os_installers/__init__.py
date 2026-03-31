@@ -250,7 +250,6 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
     ):
         raise NotImplementedError
 
-
     def _disable_gsp_firmware(self):
         nvidia_smi_output = self.run("nvidia-smi -q", silent=True).stdout.splitlines()
         for line in nvidia_smi_output:
@@ -266,11 +265,13 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         # Following instructions from
         # https://docs.nvidia.com/vgpu/latest/grid-vgpu-user-guide/index.html#disabling-gsp
-        conf_file_path = pathlib.Path('/etc/modprobe.d/nvidia.conf')
-        with conf_file_path.open(mode='a') as conf_file:
+        conf_file_path = pathlib.Path("/etc/modprobe.d/nvidia.conf")
+        with conf_file_path.open(mode="a") as conf_file:
             conf_file.write("options nvidia NVreg_EnableGpuFirmware=0\n")
             conf_file.flush()
-        logger.info("GSP firmware disabled by writing to /etc/modprobe.d/nvidia.conf. Rebooting system now.")
+        logger.info(
+            "GSP firmware disabled by writing to /etc/modprobe.d/nvidia.conf. Rebooting system now."
+        )
         raise RebootRequired
 
     @abc.abstractmethod

@@ -24,7 +24,12 @@ import uuid
 from argparse import Namespace
 from typing import Iterable
 
-from config import region_or_zone_to_multiregion, VERSION, SECURE_BOOT_CERTS, SECURE_BOOT_CERTS_URL_TEMPLATE
+from config import (
+    region_or_zone_to_multiregion,
+    VERSION,
+    SECURE_BOOT_CERTS,
+    SECURE_BOOT_CERTS_URL_TEMPLATE,
+)
 
 BASE_IMAGES_MAP = {
     # Debian
@@ -42,6 +47,8 @@ BASE_IMAGES_MAP = {
     "ubuntu-22": "image-family=ubuntu-2204-lts,image-project=ubuntu-os-cloud",
     "ubuntu-24": "image-family=ubuntu-2404-lts-amd64,image-project=ubuntu-os-cloud",
 }
+
+AVAILABLE_BASE_IMAGES = ", ".join(BASE_IMAGES_MAP.keys())
 
 
 class Builder:
@@ -250,9 +257,12 @@ class Builder:
         """Locally downloads Microsoft certificates. Needed for Secure Boot to work."""
         print("Downloading default Secure Boot certificates...")
         certs = []
-        for filename, sha1_hash in SECURE_BOOT_CERTS['DB']:
+        for filename, sha1_hash in SECURE_BOOT_CERTS["DB"]:
             try:
-                url = SECURE_BOOT_CERTS_URL_TEMPLATE.format(MULTIREGION=self.multiregion, FILENAME=urllib.parse.quote_plus(filename))
+                url = SECURE_BOOT_CERTS_URL_TEMPLATE.format(
+                    MULTIREGION=self.multiregion,
+                    FILENAME=urllib.parse.quote_plus(filename),
+                )
                 subprocess.run(
                     f"curl -L '{url}' --output '{self.tmp_dir.name}/{filename}'",
                     shell=True,
@@ -260,7 +270,12 @@ class Builder:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
-                assert hashlib.sha1(open(f"{self.tmp_dir.name}/{filename}", "rb").read()).hexdigest() == sha1_hash
+                assert (
+                    hashlib.sha1(
+                        open(f"{self.tmp_dir.name}/{filename}", "rb").read()
+                    ).hexdigest()
+                    == sha1_hash
+                )
             except subprocess.SubprocessError as err:
                 print("Failed to download default certificates.")
                 raise err

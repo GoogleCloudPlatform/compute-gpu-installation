@@ -61,7 +61,7 @@ class RHELInstaller(DNFSystemInstaller):
         try:
             logger.info("Installing GPU driver...")
             system, version = self._detect_linux_distro()
-            if version in ('8', '9'):
+            if version in ("8", "9"):
                 self.run(f"dnf -y module enable nvidia-driver:open-dkms")
                 self.run(f"dnf -y module install nvidia-driver:open-dkms")
             else:
