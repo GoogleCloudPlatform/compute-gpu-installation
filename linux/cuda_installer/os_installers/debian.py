@@ -129,13 +129,6 @@ class DebianInstaller(LinuxInstaller):
         if version == "11":
             raise RuntimeError("Debian 11 is no longer supported.")
 
-        if branch == "prod":
-            raise RuntimeError(
-                "The 'prod' branch is only available for binary installations on Debian. Please use "
-                "--installation-mode=binary to install using binary installer or "
-                "--installation-branch=nfb to install new feature branch driver."
-            )
-
         if secure_boot_public_key and secure_boot_private_key:
             if secure_boot_public_key.exists() and secure_boot_private_key.exists():
                 self.place_custom_dkms_signing_keys(

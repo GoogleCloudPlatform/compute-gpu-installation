@@ -87,6 +87,14 @@ def parse_args():
         choices=["prod", "nfb", "lts"],
     )
 
+    install_driver_parser.add_argument(
+        "--only-dependencies",
+        help="Stop the installation process after dependencies are installed. This allows you to prepare the system for"
+             "installing drivers later.",
+        required=False,
+        action="store_true",
+    )
+
     # Subparser for build_image ----------------------------------------------------------------------------------------
     image_builder_parser = subparsers.add_parser(
         "build_image",
@@ -338,6 +346,7 @@ if __name__ == "__main__":
             installation_mode=args.installation_mode,
             branch=args.installation_branch,
             rtx_vw_enabled=rtx_vw_enabled,
+            only_dependencies=args.only_dependencies,
         )
     elif args.command == "verify_driver":
         installer = LinuxInstaller.get_installer()

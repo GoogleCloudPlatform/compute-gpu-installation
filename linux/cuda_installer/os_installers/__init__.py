@@ -165,6 +165,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         installation_mode: str = "repo",
         branch: str = "prod",
         rtx_vw_enabled: bool = False,
+        only_dependencies: bool = False
     ):
         """
         Downloads the installation package and installs the driver. It also handles installation of
@@ -186,6 +187,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         logger.info("Installing prerequisite packages and updating kernel...")
         try:
             self._install_prerequisites()
+
+            if only_dependencies:
+                logger.info("The --only-dependencies flag is used, skipping driver installation.")
+                return
 
             if installation_mode == "binary":
                 self._binary_install_driver(
