@@ -21,7 +21,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 import image_builder
-from config import VERSION, VERSION_MAP
+from config import VERSION, VERSION_MAP, VERSIONS_LIST
 
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import LinuxInstaller, debian, ubuntu, rhel, rocky
@@ -300,6 +300,11 @@ def parse_args():
         "verify_cuda", help="Verify CUDA Toolkit installation."
     )
 
+    # List driver versions ---------------------------------------------------------------------------------------------
+    list_driver_versions_parser = subparsers.add_parser(
+        "list_driver_versions", help="List available driver versions."
+    )
+
     return parser.parse_args()
 
 
@@ -375,3 +380,7 @@ if __name__ == "__main__":
             sys.exit(1)
     elif args.command == "build_image":
         image_builder.Builder(args).build()
+    elif args.command == "list_driver_versions":
+        import urllib
+        versions = urllib.request.urlopen(VERSIONS_LIST).read().decode()
+        print(versions)

@@ -116,6 +116,7 @@ try:
 except urllib.error.URLError:
     MULTIREGION = "us"
 
+VERSIONS_LIST = f"https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/drivers/versions.txt"
 
 DRIVER_URL = "https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
 DRIVER_GS_URI = "gs://compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linux-x86_64-{DRIVER_VERSION}.run"
