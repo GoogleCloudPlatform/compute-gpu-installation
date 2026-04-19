@@ -165,7 +165,8 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         installation_mode: str = "repo",
         branch: str = "prod",
         rtx_vw_enabled: bool = False,
-        only_dependencies: bool = False
+        only_dependencies: bool = False,
+        force_version: str = None
     ):
         """
         Downloads the installation package and installs the driver. It also handles installation of
@@ -179,6 +180,11 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if self.verify_driver():
             logger.info("GPU driver already installed.")
             return
+
+        if force_version:
+            print("Use of --force-version detected. Setting installation mode to binary and branch to custom.")
+            installation_mode = "binary"
+            branch = "custom"
 
         installation_mode, branch = self.verify_installation_mode_and_branch(
             installation_mode, branch, rtx_vw_enabled
@@ -199,6 +205,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                     ignore_no_gpu,
                     branch,
                     rtx_vw_enabled,
+                    force_version
                 )
             else:
                 self._add_nvidia_repo()
@@ -215,8 +222,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         ignore_no_gpu: bool = False,
         branch: str = "prod",
         rtx_vw_enabled: bool = False,
+        force_version: str = None,
     ):
-        installer_path = self.download_driver_installer(branch, rtx_vw_enabled)
+        installer_path = self.download_driver_installer(branch, rtx_vw_enabled, force_version)
 
         logger.info("Installing GPU drivers for your device...")
         if (
@@ -686,25 +694,36 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         )
 
     def download_driver_installer(
-        self, branch: str, rtx_vw_enabled: bool
+        self, branch: str, rtx_vw_enabled: bool, force_version: str = None
     ) -> pathlib.Path:
 
-        driver_key = "rtx-driver" if rtx_vw_enabled else "driver"
-        driver_version = config.VERSION_MAP[branch][driver_key]["version"]
-        logger.info(f"Downloading driver for {branch} branch ({driver_version})...")
+        if force_version:
+            if force_version not in config.DRIVER_CHECKSUMS:
+                raise ValueError(
+                    f"The driver version {force_version} is not available. "
+                    "Use the `list_driver_versions` command to see the list of available versions."
+                )
+            logger.info(f"Downloading driver in version {force_version}...")
+            driver_version = force_version
+            hash_value = config.DRIVER_CHECKSUMS[force_version]
+        else:
+            driver_key = "rtx-driver" if rtx_vw_enabled else "driver"
+            driver_version = config.VERSION_MAP[branch][driver_key]["version"]
+            hash_value = config.DRIVER_CHECKSUMS[driver_version]
+            logger.info(f"Downloading driver for {branch} branch ({driver_version})...")
 
         return self.download_file(
             DRIVER_URL.format(
                 MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version
             ),
-            config.VERSION_MAP[branch][driver_key]["hash"],
+            hash_value,
             DRIVER_GS_URI.format(
                 MULTIREGION=config.MULTIREGION, DRIVER_VERSION=driver_version
             ),
         )
 
     def download_file(
-        self, url: str, sha256sum: str, gs_uri: str = None
+        self, url: str, sha256sum: str = None, gs_uri: str = None
     ) -> pathlib.Path:
         """
         Uses `curl` to download a file pointed by url. It will also execute `sha256sum` on the downloaded file
@@ -731,12 +750,15 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             else:
                 self.run(f"curl -fSsL -O {url}", check=True)
 
-        checksum = self.run(f"sha256sum {file_path}").stdout.strip().split()[0]
-        if checksum != sha256sum:
-            raise RuntimeError(
-                f"The installer file checksum does not match. Won't continue installation."
-                f"Try deleting {file_path.absolute()} and trying again."
-            )
+        if sha256sum is not None:
+            checksum = self.run(f"sha256sum {file_path}").stdout.strip().split()[0]
+            if checksum != sha256sum:
+                raise RuntimeError(
+                    f"The installer file checksum does not match. Won't continue installation."
+                    f"Try deleting {file_path.absolute()} and trying again."
+                )
+        else:
+            logger.info("Checksum not provided, skipping download checksum verification.")
         self._file_download_verified.add(url)
         return file_path
 
@@ -818,10 +840,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         Returns installation mode and branch. Possibly changed in case of RTX VWs installation.
         """
         mode_file = INSTALLER_DIR / "mode"
-        mode_text = f"{mode} {branch}"
 
         assert mode in ("binary", "repo")
-        assert branch in ("prod", "nfb", "lts")
+        assert branch in ("prod", "nfb", "lts", "custom")
+
+        if branch == "custom":
+            mode = "binary"
 
         if rtx_vw_enabled and (branch != "prod" or mode != "binary"):
             logger.info(
@@ -836,6 +860,8 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 "Please use --installation-mode=binary and --installation-branch=lts to install "
                 "LTS driver branch."
             )
+
+        mode_text = f"{mode} {branch}"
 
         if not mode_file.exists():
             # First run, no mode file exists, we make it and set the mode

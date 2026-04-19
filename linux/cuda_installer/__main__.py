@@ -21,7 +21,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 import image_builder
-from config import VERSION, VERSION_MAP, VERSIONS_LIST
+from config import VERSION, VERSION_MAP, VERSIONS_LIST, DRIVER_CHECKSUMS
 
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import LinuxInstaller, debian, ubuntu, rhel, rocky
@@ -93,6 +93,15 @@ def parse_args():
              "installing drivers later.",
         required=False,
         action="store_true",
+    )
+
+    install_driver_parser.add_argument(
+        "--force-version",
+        help="Force the specific driver version installation. Use the `list_driver_versions` command to check the list "
+             "of available versions. Compatibility with CUDA Toolkit and your operating system is not guaranteed. "
+             "Use at your own risk.",
+        required=False, type=str,
+        action="store",
     )
 
     # Subparser for build_image ----------------------------------------------------------------------------------------
@@ -352,6 +361,7 @@ if __name__ == "__main__":
             branch=args.installation_branch,
             rtx_vw_enabled=rtx_vw_enabled,
             only_dependencies=args.only_dependencies,
+            force_version=args.force_version,
         )
     elif args.command == "verify_driver":
         installer = LinuxInstaller.get_installer()
@@ -381,6 +391,5 @@ if __name__ == "__main__":
     elif args.command == "build_image":
         image_builder.Builder(args).build()
     elif args.command == "list_driver_versions":
-        import urllib
-        versions = urllib.request.urlopen(VERSIONS_LIST).read().decode()
-        print(versions)
+        versions = [v for v in DRIVER_CHECKSUMS.keys() if "-grid" not in v]
+        print("\n".join(versions))
