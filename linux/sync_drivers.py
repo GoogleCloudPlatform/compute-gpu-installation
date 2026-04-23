@@ -28,6 +28,10 @@ NVIDIA_DRIVER_ARCHIVE = "https://download.nvidia.com/XFree86/Linux-x86_64/"
 NVIDIA_DRIVER_FILE_TEMPLATE = "https://download.nvidia.com/XFree86/Linux-x86_64/{version}/NVIDIA-Linux-x86_64-{version}.run"
 NVIDIA_DRIVER_SUM_TEMPLATE = "https://download.nvidia.com/XFree86/Linux-x86_64/{version}/NVIDIA-Linux-x86_64-{version}.run.sha256sum"
 DRIVER_BUCKET_PATH = "gs://compute-gpu-installation-eu/drivers/"
+SYNC_BUCKETS = [
+    "gs://compute-gpu-installation-us/drivers/",
+    "gs://compute-gpu-installation-asia/drivers/",
+]
 DRIVER_FILE_RE = re.compile(r"NVIDIA-Linux-x86_64-(\d{3}\.\d{2,3}(?:\.\d{2,3})?).run")
 
 def get_available_driver_versions() -> set[str]:
@@ -62,7 +66,7 @@ def find_new_versions() -> set[str]:
     stored_versions = get_stored_driver_versions()
     return nvidia_versions - stored_versions
 
-def download_version(version: str, destination: pathlib.Path) -> pathlib.Path:
+def download_version(version: str, destination: pathlib.Path) -> tuple[pathlib.Path, str]:
     """
     Download the driver from NVIDIA and verify it's sha256sum.
     """
@@ -71,26 +75,24 @@ def download_version(version: str, destination: pathlib.Path) -> pathlib.Path:
     sum_url = NVIDIA_DRIVER_SUM_TEMPLATE.format(version=version)
 
     file_path, message = urllib.request.urlretrieve(file_url, destination / file_name)
-    try:
-        nvidia_sum_value = urllib.request.urlopen(sum_url).read().decode().split(' ')[0]
-    except HTTPError as err:
-        if err.code != 404:
-            raise err
-    else:
-        print(f"Couldn't find checksum file for version {version} - skipping checksum validation.")
-        my_sum_value = subprocess.run(["sha256sum", file_path], capture_output=True, check=True, text=True).stdout.split(' ')[0]
-        assert nvidia_sum_value == my_sum_value
 
-    return pathlib.Path(file_path)
+    nvidia_sum_value = urllib.request.urlopen(sum_url).read().decode().split(' ')[0]
 
-def download_and_upload_new_version(new_version: str) -> None:
+    print(f"Couldn't find checksum file for version {version} - skipping checksum validation.")
+    my_sum_value = subprocess.run(["sha256sum", file_path], capture_output=True, check=True, text=True).stdout.split(' ')[0]
+    assert nvidia_sum_value == my_sum_value
+
+    return pathlib.Path(file_path), my_sum_value
+
+def download_and_upload_new_version(new_version: str) -> str:
     """
     Downloads the new version of drivers and stores it in the GCS bucket.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
-        file_path = download_version(new_version, pathlib.Path(tmpdir))
+        file_path, checksum = download_version(new_version, pathlib.Path(tmpdir))
         file_name = pathlib.Path(file_path).name
         subprocess.run(["gcloud", "storage", "cp", str(file_path), DRIVER_BUCKET_PATH + file_name], check=True)
+        return checksum
 
 def generate_versions_file():
     """
@@ -102,6 +104,23 @@ def generate_versions_file():
         tmpfile.flush()
         subprocess.run(["gcloud", "storage", "cp", tmpfile.name, DRIVER_BUCKET_PATH + "versions.txt"], check=True)
     print("versions.txt generated and uploaded.")
+
+def update_version_list(new_hashes: dict):
+    """
+    Updates the list of versions in cuda_installer/drivers_list.py.
+    """
+    from cuda_installer.drivers_list import DRIVER_CHECKSUMS
+
+    assert len(set(DRIVER_CHECKSUMS.keys()).intersection(new_hashes.keys())) == 0
+
+    DRIVER_CHECKSUMS.update(new_hashes)
+
+    with open("cuda_installer/drivers_list.py", "w") as drivers_list_file:
+        drivers_list_file.write("DRIVER_CHECKSUMS = {\n")
+        for version, checksum in sorted(DRIVER_CHECKSUMS.items()):
+            drivers_list_file.write(f"  '{version}': '{checksum}',\n")
+        drivers_list_file.write("}\n")
+        drivers_list_file.flush()
 
 def main():
     parser = argparse.ArgumentParser(description="Synchronize NVIDIA drivers with GCS bucket.")
@@ -128,6 +147,7 @@ def main():
             print("No new driver versions found.")
     elif args.command == "upload":
         new_versions = find_new_versions()
+        new_checksums = {}
         if not new_versions:
             print("No new driver versions to upload.")
             return
@@ -135,12 +155,21 @@ def main():
         for version in sorted(list(new_versions)):
             print(f"Downloading and uploading version {version}...")
             try:
-                download_and_upload_new_version(version)
+                new_checksums[version] = download_and_upload_new_version(version)
             except HTTPError as err:
                 print(f"Encountered error for version {version}: ", err)
+            except AssertionError:
+                print(f"Checksum validation for version {version} failed. Skipping that version.")
         print("All new versions have been uploaded.")
         print("Generating new versions.txt")
         generate_versions_file()
+        print("Updating cuda_installer/drivers_list.py")
+        update_version_list(new_checksums)
+        print("Syncing multiregion buckets...")
+        for bucket in SYNC_BUCKETS:
+            print(f"Updating {bucket}...")
+            subprocess.run(['gcloud', 'storage', 'rsync', '-r' ,' -quiet', DRIVER_BUCKET_PATH, bucket])
+        print("Done!")
     elif args.command == "generate-versions-file":
         generate_versions_file()
 
