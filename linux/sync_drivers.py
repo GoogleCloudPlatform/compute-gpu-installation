@@ -14,7 +14,7 @@
 # limitations under the License.
 """
 Queries the NVIDIA Linux driver archive to find new releases of
-GPU drivers.
+GPU drivers and uploads them to a GCS bucket.
 """
 import argparse
 import re
@@ -28,7 +28,7 @@ NVIDIA_DRIVER_ARCHIVE = "https://download.nvidia.com/XFree86/Linux-x86_64/"
 NVIDIA_DRIVER_FILE_TEMPLATE = "https://download.nvidia.com/XFree86/Linux-x86_64/{version}/NVIDIA-Linux-x86_64-{version}.run"
 NVIDIA_DRIVER_SUM_TEMPLATE = "https://download.nvidia.com/XFree86/Linux-x86_64/{version}/NVIDIA-Linux-x86_64-{version}.run.sha256sum"
 DRIVER_BUCKET_PATH = "gs://compute-gpu-installation-eu/drivers/"
-DRIVER_FILE_RE = re.compile(r"NVIDIA-Linux-x86_64-(\d{3}\.\d{2,3}\.\d{2,3}).run")
+DRIVER_FILE_RE = re.compile(r"NVIDIA-Linux-x86_64-(\d{3}\.\d{2,3}(?:\.\d{2,3})?).run")
 
 def get_available_driver_versions() -> set[str]:
     """
@@ -39,7 +39,7 @@ def get_available_driver_versions() -> set[str]:
     
     # The driver versions are in the format of "535.104.05/"
     # We can use a regex to find all such occurrences
-    versions = re.findall(r'href=\'(\d{3}\.\d{2,3}\.\d{2,3})/', html)
+    versions = re.findall(r'href=\'(\d{3}\.\d{2,3}(?:\.\d{2,3})?)/', html)
     
     # Filter for versions > 500
     return {v for v in versions if int(v.split('.')[0]) >= 500}
@@ -134,7 +134,10 @@ def main():
         print(f"Found {len(new_versions)} new versions to upload.")
         for version in sorted(list(new_versions)):
             print(f"Downloading and uploading version {version}...")
-            download_and_upload_new_version(version)
+            try:
+                download_and_upload_new_version(version)
+            except HTTPError as err:
+                print(f"Encountered error for version {version}: ", err)
         print("All new versions have been uploaded.")
         print("Generating new versions.txt")
         generate_versions_file()
