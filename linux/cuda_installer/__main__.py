@@ -21,7 +21,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 import image_builder
-from config import VERSION, VERSION_MAP, VERSIONS_LIST, DRIVER_CHECKSUMS
+from config import VERSION, VERSION_MAP, VERSIONS_LIST, DRIVER_CHECKSUMS, SpecialMachine
 
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import LinuxInstaller, debian, ubuntu, rhel, rocky
@@ -323,16 +323,23 @@ def assert_root():
         sys.exit(1)
 
 
-def detect_virtual_workstation():
-    request = Request(
-        "http://metadata.google.internal/computeMetadata/v1/instance/",
-        headers={"Metadata-Flavor": "Google"},
-    )
+def detect_special_machine_type() -> SpecialMachine:
     try:
-        response = urlopen(request).read().decode()
+        machine_type = urlopen(Request(
+                "http://metadata.google.internal/computeMetadata/v1/instance/",
+                headers={"Metadata-Flavor": "Google"},
+            )).read().decode().split('/')[-1]
+        if machine_type in ('g4-standard-6', 'g4-standard-12', 'g4-standard-24'):
+            return SpecialMachine.vGPU
+        response = urlopen(Request(
+            "http://metadata.google.internal/computeMetadata/v1/instance/",
+            headers={"Metadata-Flavor": "Google"},
+        )).read().decode()
+        if "nvidia-grid-license" in response:
+            return SpecialMachine.vWS
     except URLError:
-        return False
-    return "nvidia-grid-license" in response
+        return SpecialMachine.Normal
+    return SpecialMachine.Normal
 
 
 if __name__ == "__main__":
@@ -348,7 +355,7 @@ if __name__ == "__main__":
         else None
     )
 
-    rtx_vw_enabled = detect_virtual_workstation()
+    special_machine_type = detect_special_machine_type()
 
     if args.command == "install_driver":
         assert_root()
@@ -359,7 +366,7 @@ if __name__ == "__main__":
             ignore_no_gpu=args.ignore_no_gpu,
             installation_mode=args.installation_mode,
             branch=args.installation_branch,
-            rtx_vw_enabled=rtx_vw_enabled,
+            special_machine_type=special_machine_type,
             only_dependencies=args.only_dependencies,
             force_version=args.force_version,
         )
@@ -380,7 +387,7 @@ if __name__ == "__main__":
             ignore_no_gpu=args.ignore_no_gpu,
             installation_mode=args.installation_mode,
             branch=args.installation_branch,
-            rtx_vw_enabled=rtx_vw_enabled,
+            special_machine_type=special_machine_type,
         )
     elif args.command == "verify_cuda":
         installer = LinuxInstaller.get_installer()

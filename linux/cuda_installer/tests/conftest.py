@@ -39,6 +39,7 @@ OPERATING_SYSTEMS = (
     ("rocky-linux-cloud", "rocky-linux-10"),
     ("ubuntu-os-cloud", "ubuntu-2204-lts"),
     ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
+    # ("ubuntu-os-cloud", "ubuntu-2604-lts-amd64"),
 )
 
 BRANCHES = ("prod", "nfb", "lts")

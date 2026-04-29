@@ -38,7 +38,7 @@ from config import (
     NVIDIA_PERSISTANCED_INSTALLER,
     CUDA_SAMPLES_URL,
     CUDA_SAMPLES_GS_URI,
-    INSTALLER_DIR,
+    INSTALLER_DIR, SpecialMachine,
 )
 from decorators import checkpoint_decorator
 from logger import logger
@@ -164,7 +164,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         ignore_no_gpu: bool = False,
         installation_mode: str = "repo",
         branch: str = "prod",
-        rtx_vw_enabled: bool = False,
+        special_machine_type: SpecialMachine = SpecialMachine.Normal,
         only_dependencies: bool = False,
         force_version: str = None
     ):
@@ -187,7 +187,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             branch = "custom"
 
         installation_mode, branch = self.verify_installation_mode_and_branch(
-            installation_mode, branch, rtx_vw_enabled
+            installation_mode, branch, special_machine_type
         )
 
         logger.info("Installing prerequisite packages and updating kernel...")
@@ -204,7 +204,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                     secure_boot_private_key,
                     ignore_no_gpu,
                     branch,
-                    rtx_vw_enabled,
+                    special_machine_type,
                     force_version
                 )
             else:
@@ -221,10 +221,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         secure_boot_private_key: Optional[pathlib.Path] = None,
         ignore_no_gpu: bool = False,
         branch: str = "prod",
-        rtx_vw_enabled: bool = False,
+        special_machine_type: SpecialMachine = False,
         force_version: str = None,
     ):
-        installer_path = self.download_driver_installer(branch, rtx_vw_enabled, force_version)
+        installer_path = self.download_driver_installer(branch, special_machine_type, force_version)
 
         logger.info("Installing GPU drivers for your device...")
         if (
@@ -243,7 +243,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         else:
             self.run(f"sh {installer_path} -s", check=True)
 
-        if rtx_vw_enabled:
+        if special_machine_type is SpecialMachine.vWS:
             self._disable_gsp_firmware()
 
         if self.verify_driver() or ignore_no_gpu:
@@ -337,14 +337,14 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         ignore_no_gpu: bool = False,
         installation_mode: str = "repo",
         branch: str = "prod",
-        rtx_vw_enabled: bool = False,
+        special_machine_type: SpecialMachine = SpecialMachine.Normal,
     ):
         """
         This is the method to install the CUDA Toolkit. It will install the toolkit and execute post-installation
         configuration in the operating system, to make it available for all users.
         """
         installation_mode, branch = self.verify_installation_mode_and_branch(
-            installation_mode, branch, rtx_vw_enabled
+            installation_mode, branch, special_machine_type
         )
 
         if not (self.verify_driver() or ignore_no_gpu):
@@ -355,7 +355,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             self.install_driver(
                 installation_mode=installation_mode,
                 branch=branch,
-                rtx_vw_enabled=rtx_vw_enabled,
+                special_machine_type=special_machine_type,
             )
 
         if installation_mode == "binary":
@@ -386,10 +386,10 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         ignore_no_gpu: bool = False,
         installation_mode: str = "repo",
         branch: str = "prod",
-        rtx_vw_enabled: bool = False,
+        special_machine_type: SpecialMachine = SpecialMachine.Normal,
     ):
         try:
-            self._install_cuda(ignore_no_gpu, installation_mode, branch, rtx_vw_enabled)
+            self._install_cuda(ignore_no_gpu, installation_mode, branch, special_machine_type)
         except RebootRequired:
             self.reboot()
 
@@ -694,7 +694,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         )
 
     def download_driver_installer(
-        self, branch: str, rtx_vw_enabled: bool, force_version: str = None
+        self, branch: str, special_machine_type: SpecialMachine, force_version: str = None
     ) -> pathlib.Path:
 
         if force_version:
@@ -707,7 +707,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             driver_version = force_version
             hash_value = config.DRIVER_CHECKSUMS[force_version]
         else:
-            driver_key = "rtx-driver" if rtx_vw_enabled else "driver"
+            driver_key = "rtx-driver" if special_machine_type is SpecialMachine.vWS else "driver"
             driver_version = config.VERSION_MAP[branch][driver_key]["version"]
             hash_value = config.DRIVER_CHECKSUMS[driver_version]
             logger.info(f"Downloading driver for {branch} branch ({driver_version})...")
@@ -831,7 +831,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
     @staticmethod
     def verify_installation_mode_and_branch(
-        mode: str, branch: str, rtx_vw_enabled: bool
+        mode: str, branch: str, special_machine_type: SpecialMachine
     ) -> (str, str):
         """
         Check if the previously used installation method is the same as the current one. If it's not, abort the process
@@ -847,7 +847,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if branch == "custom":
             mode = "binary"
 
-        if rtx_vw_enabled and (branch != "prod" or mode != "binary"):
+        if special_machine_type == SpecialMachine.vWS and (branch != "prod" or mode != "binary"):
             logger.info(
                 "RTX Virtual Workstation detected. Switching to prod branch (binary mode) for driver installation."
             )

@@ -46,6 +46,7 @@ BASE_IMAGES_MAP = {
     # Ubuntu
     "ubuntu-22": "image-family=ubuntu-2204-lts,image-project=ubuntu-os-cloud",
     "ubuntu-24": "image-family=ubuntu-2404-lts-amd64,image-project=ubuntu-os-cloud",
+    # "ubuntu-26": "image-family=ubuntu-2604-lts-amd64,image-project=ubuntu-os-cloud",
 }
 
 AVAILABLE_BASE_IMAGES = ", ".join(BASE_IMAGES_MAP.keys())

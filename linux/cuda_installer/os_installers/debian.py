@@ -32,7 +32,7 @@ class DebianInstaller(LinuxInstaller):
     KERNEL_VERSION_FORMAT = r"{major}\.{minor}\.{patch}{micro}-cloud-amd64"
     KERNEL_HEADERS_PACKAGE = "linux-headers-{version}"
     KERNEL_PACKAGE_REGEX = (
-        r"linux-image-{major}\.{minor}\.([\d]+)(-[\d]+|\+deb13)-cloud-amd64"
+        r"linux-image-{major}\.{minor}\.([\d]+)(-[\d]+|\+deb13(?:\+1)?)-cloud-amd64"
     )
 
     def __init__(self):

@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
 import os
 import pathlib
 import urllib.request
 import urllib.error
 
-from .drivers_list import DRIVER_CHECKSUMS
+from drivers_list import DRIVER_CHECKSUMS
 
 INSTALLER_DIR = pathlib.Path("/opt/google/cuda-installer/")
 try:
@@ -28,7 +29,12 @@ except PermissionError:
 if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
     VERSION = "debug"
 else:
-    VERSION = "v1.8.1"
+    VERSION = "v1.9.0"
+
+class SpecialMachine(Enum):
+    Normal = 0
+    vGPU = 1
+    vWS = 2
 
 # Hashes in this map are SHA256
 VERSION_MAP = {
@@ -38,6 +44,9 @@ VERSION_MAP = {
         },
         "rtx-driver": {
             "version": "580.126.09-grid",
+        },
+        "vgpu-driver": {
+            "version": "580.126.09-grid-gcp",
         },
         "cuda": {
             "major": "13",
