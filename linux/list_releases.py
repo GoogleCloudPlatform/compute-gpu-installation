@@ -16,10 +16,9 @@ Queries the NVIDIA hosted releases information to print useful summary
 of available drivers.
 """
 import json
-import urllib.request
-import urllib.error
 import sys
-import pprint
+import urllib.error
+import urllib.request
 
 from cuda_installer.config import VERSION_MAP
 
