@@ -58,13 +58,14 @@ This table shows the versions of drivers installed by different versions of the 
 installation mode. The repository installation method will always depend on the version available
 in the distribution repositories.
 
-| release | new feature branch       | prod branch               | long term support branch  | RTX (Virtual Workstation) |
-|---------|--------------------------|---------------------------|---------------------------|---------------------------|
-| v1.8.1  | 590.48.01 (cuda: 13.1.2) | 580.126.20 (cuda: 13.0.2) | 580.126.20 (cuda: 13.0.2) | 580.126.09 (cuda: 13.0.2) |
-| v1.8.0  | 590.48.01 (cuda: 13.1.1) | 580.105.08 (cuda: 13.0.2) | 580.105.08 (cuda: 13.0.2) | 580.105.08 (cuda: 13.0.2) |
-| v1.7.0  | 575.57.08 (cuda: 12.9.1) | 580.82.07 (cuda: 13.0.1)  | 580.82.07 (cuda: 13.0.1)  | 580.82.07 (cuda: 13.0.1)  |
-| v1.6.0  | 575.57.08 (cuda: 12.9.1) | 570.172.08 (cuda: 12.8.1) | 535.261.03 (cuda: 12.2.2) | n/a                       |
-| v1.5.0  | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) | n/a                       | n/a                       |
+| release | new feature branch       | prod branch               | long term support branch  | RTX (Virtual Workstation) | vGPU       |
+|---------|--------------------------|---------------------------|---------------------------|---------------------------|------------|
+| v1.9.0  | 590.48.01 (cuda: 13.1.2) | 595.71.05 (cuda: 13.2.1)  | 580.159.03 (cuda: 13.0.2) | 595.71.05 (cuda: 13.2.1)  | 580.126.09 |
+| v1.8.1  | 590.48.01 (cuda: 13.1.2) | 580.126.20 (cuda: 13.0.2) | 580.126.20 (cuda: 13.0.2) | 580.126.09 (cuda: 13.0.2) | n/a        |
+| v1.8.0  | 590.48.01 (cuda: 13.1.1) | 580.105.08 (cuda: 13.0.2) | 580.105.08 (cuda: 13.0.2) | 580.105.08 (cuda: 13.0.2) | n/a        |
+| v1.7.0  | 575.57.08 (cuda: 12.9.1) | 580.82.07 (cuda: 13.0.1)  | 580.82.07 (cuda: 13.0.1)  | 580.82.07 (cuda: 13.0.1)  | n/a        |
+| v1.6.0  | 575.57.08 (cuda: 12.9.1) | 570.172.08 (cuda: 12.8.1) | 535.261.03 (cuda: 12.2.2) | n/a                       | n/a        |
+| v1.5.0  | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) | n/a                       | n/a                       | n/a        |
 
 
 ## Running the tool

@@ -18,7 +18,10 @@ import pathlib
 import urllib.request
 import urllib.error
 
-from drivers_list import DRIVER_CHECKSUMS
+try:
+    from drivers_list import DRIVER_CHECKSUMS
+except ModuleNotFoundError:
+    from cuda_installer.drivers_list import DRIVER_CHECKSUMS
 
 INSTALLER_DIR = pathlib.Path("/opt/google/cuda-installer/")
 try:
@@ -40,22 +43,22 @@ class SpecialMachine(Enum):
 VERSION_MAP = {
     "prod": {
         "driver": {
-            "version": "580.126.20",
+            "version": "595.71.05",
         },
         "rtx-driver": {
-            "version": "580.126.09-grid",
+            "version": "595.71.05-grid",
         },
         "vgpu-driver": {
             "version": "580.126.09-grid-gcp",
         },
         "cuda": {
             "major": "13",
-            "minor": "0",
-            "patch": "2",
-            "driver": "580.95.05",
-            "hash": "81a5d0d0870ba2022efb0a531dcc60adbdc2bbff7b3ef19d6fd6d8105406c775",
-            "samples": "13.0",
-            "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
+            "minor": "2",
+            "patch": "1",
+            "driver": "595.58.03",
+            "hash": "5514a3fe7bcea92b25073c7c100c3e64e7961a7e1dbad6955adb8b59806053f0",
+            "samples": "13.2",
+            "samples_hash": "c7d8da987a43fd6ed7c2641df204dfc639768adbae070bc22f9df0e03005f7de",
         },
     },
     "nfb": {
@@ -74,7 +77,7 @@ VERSION_MAP = {
     },
     "lts": {
         "driver": {
-            "version": "580.126.20",
+            "version": "580.159.03",
         },
         "cuda": {
             "major": "13",
