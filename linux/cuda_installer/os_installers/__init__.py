@@ -707,7 +707,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             driver_version = force_version
             hash_value = config.DRIVER_CHECKSUMS[force_version]
         else:
-            driver_key = "rtx-driver" if special_machine_type is SpecialMachine.vWS else "driver"
+            if special_machine_type is SpecialMachine.vWS:
+                driver_key = "rtx-driver"
+            elif special_machine_type is SpecialMachine.vGPU:
+                driver_key = "vgpu-driver"
+            else:
+                driver_key = "driver"
             driver_version = config.VERSION_MAP[branch][driver_key]["version"]
             hash_value = config.DRIVER_CHECKSUMS[driver_version]
             logger.info(f"Downloading driver for {branch} branch ({driver_version})...")
@@ -847,9 +852,9 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         if branch == "custom":
             mode = "binary"
 
-        if special_machine_type == SpecialMachine.vWS and (branch != "prod" or mode != "binary"):
+        if special_machine_type in (SpecialMachine.vWS, SpecialMachine.vGPU) and (branch != "prod" or mode != "binary"):
             logger.info(
-                "RTX Virtual Workstation detected. Switching to prod branch (binary mode) for driver installation."
+                "RTX Virtual Workstation or vGPU machine detected. Switching to prod branch (binary mode) for driver installation."
             )
             branch = "prod"
             mode = "binary"

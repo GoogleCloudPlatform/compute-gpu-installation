@@ -26,6 +26,8 @@ from config import VERSION, VERSION_MAP, VERSIONS_LIST, DRIVER_CHECKSUMS, Specia
 # Need to import all the subpackages here, or the program fails for Python 3.6
 from os_installers import LinuxInstaller, debian, ubuntu, rhel, rocky
 
+from logger import logger
+
 # Mentioning the packages from import above, so automatic import cleanups don't remove them
 del debian
 del ubuntu
@@ -326,9 +328,10 @@ def assert_root():
 def detect_special_machine_type() -> SpecialMachine:
     try:
         machine_type = urlopen(Request(
-                "http://metadata.google.internal/computeMetadata/v1/instance/",
+                "http://metadata.google.internal/computeMetadata/v1/instance/machine-type",
                 headers={"Metadata-Flavor": "Google"},
             )).read().decode().split('/')[-1]
+        logger.info(f"Detected machine type: {machine_type}")
         if machine_type in ('g4-standard-6', 'g4-standard-12', 'g4-standard-24'):
             return SpecialMachine.vGPU
         response = urlopen(Request(
