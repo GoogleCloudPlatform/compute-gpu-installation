@@ -103,7 +103,7 @@ def get_image_from_family(project: str, family: str) -> compute_v1.Image:
     return newest_image
 
 
-def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk:
+def _get_boot_disk(source_image_link: str, zone: str, disk_type: str = "pd-ssd") -> compute_v1.AttachedDisk:
     """
     Prepare an AttachedDisk object to be used for instance creation.
     """
@@ -111,7 +111,7 @@ def _get_boot_disk(source_image_link: str, zone: str) -> compute_v1.AttachedDisk
     initialize_params = compute_v1.AttachedDiskInitializeParams()
     initialize_params.source_image = source_image_link
     initialize_params.disk_size_gb = 200
-    initialize_params.disk_type = f"zones/{zone}/diskTypes/pd-ssd"
+    initialize_params.disk_type = f"zones/{zone}/diskTypes/{disk_type}"
     boot_disk.initialize_params = initialize_params
     # Remember to set auto_delete to True if you want the disk to be deleted when you delete
     # your VM instance.
@@ -149,6 +149,8 @@ def test_install_driver_for_system(
 ):
     if gpu.endswith("-VWS"):
         pytest.skip("This test doesn't cover Virtual Workstation drivers.")
+    if gpu == "vG4" and (mode != "binary" or branch != "prod"):
+        pytest.skip("vGPUs are tested only with binary prod setting.")
     for _ in range(5):
         zone = random.choice(ZONES[gpu])
         try:
@@ -179,8 +181,8 @@ def test_install_rtx_vw_driver_for_system(
     opsys: Tuple[str, str],
 ):
     for _ in range(5):
-        zone = random.choice(ZONES["T4"])
         try:
+            zone = random.choice(ZONES["T4"])
             nvidia_smi_q = _test_setup(
                 zipapp_gs_url,
                 service_account,
@@ -192,6 +194,8 @@ def test_install_rtx_vw_driver_for_system(
                 zone,
                 vws=True,
             )
+        except KeyError:
+            pytest.skip("T4 tests disabled.")
         except RetryInDifferentZone:
             continue
         else:
@@ -224,7 +228,10 @@ def _test_setup(
         pytest.skip("LTS branch doesn't work for repo mode.")
 
     op_sys_image = get_image_from_family(*opsys)
-    disks = [_get_boot_disk(op_sys_image.self_link, zone)]
+    if gpu == "vG4":
+        disks = [_get_boot_disk(op_sys_image.self_link, zone, "hyperdisk-balanced")]
+    else:
+        disks = [_get_boot_disk(op_sys_image.self_link, zone, "pd-ssd")]
 
     network_interface = compute_v1.NetworkInterface()
     network_interface.name = "global/networks/default"
@@ -343,11 +350,15 @@ def _test_setup(
         return _test_body(zone, instance_name, gpu, ssh_key, branch, expected_version)
     finally:
         try:
+            instance_client = compute_v1.InstancesClient()
             # print("This is where I'd delete the instance, but we keep it for debugging.")
-            operation = instance_client.delete_unary(
+            operation = instance_client.delete(
                 project=PROJECT, zone=zone, instance=instance_name
             )
-            operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
+            operation.result()
+            if operation.error:
+                pytest.fail(f"Could not delete instance: {operation.error_message}")
+            # operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
         except google.api_core.exceptions.NotFound:
             # The instance was not properly created at all.
             pass
@@ -462,7 +473,10 @@ def _test_body(
         timeout=60,
     )
     # assert f"driver version: {expected_version}" in process.stdout.lower()
-    assert gpu.lower() in process.stdout.lower()
+    if gpu.lower() == "vg4":
+        assert "rtx pro 6000" in process.stdout.lower()
+    else:
+        assert gpu.lower() in process.stdout.lower()
 
     process = subprocess.run(
         [

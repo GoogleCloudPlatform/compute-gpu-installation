@@ -53,6 +53,8 @@ GPUS = {
     "T4-VWS": "nvidia-tesla-t4-vws",
     # "P100": "nvidia-tesla-p100",
     # "V100": "nvidia-tesla-v100",
+    # "G4": "nvidia-rtx-pro-6000",
+    "vG4": "nvidia-rtx-pro-6000",
 }
 GPU_QUOTA_SEMAPHORES = {
     "L4": BoundedSemaphore(8),
@@ -61,6 +63,8 @@ GPU_QUOTA_SEMAPHORES = {
     "T4": BoundedSemaphore(8),
     "P100": BoundedSemaphore(1),
     "V100": BoundedSemaphore(8),
+    "G4": BoundedSemaphore(8),
+    "vG4": BoundedSemaphore(8)
 }
 ZONES = {
     "L4": ("us-central1-a",),
@@ -87,6 +91,8 @@ ZONES = {
     ),
     "P100": ("us-central1-c",),
     "V100": ("us-central1-a",),
+    "G4": ("us-central1-b", "us-central1-f", "europe-north1-a", "europe-north1-b"),
+    "vG4": ("us-central1-b",),
 }
 MACHINE_TYPES = {
     "L4": "g2-standard-4",
@@ -96,6 +102,8 @@ MACHINE_TYPES = {
     "T4-VWS": "n1-standard-16",
     "P100": "n1-standard-8",
     "V100": "n1-standard-8",
+    "G4": "g4-standard-48",
+    "vG4": "g4-standard-6",
 }
 
 
