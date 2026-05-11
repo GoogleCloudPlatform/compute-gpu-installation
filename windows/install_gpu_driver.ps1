@@ -17,9 +17,17 @@
 $ErrorActionPreference = "Stop"
 
 # --- Constants & Config ---
-# Paste the SHA256 hash below. If empty, verification is skipped.
-$ExpectedSha256 = "23758d7365f3e421d481b5c40290f0cc6a1ff44dcf0f50add1d06761cf2a7ae8"
-$DriverVersionFilename = "582.16_grid_win10_win11_server2022_server2025_dch_64bit_international.exe"
+$Drivers = @{
+    "Normal" = @{
+        "Filename" = "582.16_grid_win10_win11_server2022_server2025_dch_64bit_international.exe"
+        "Hash"     = "23758d7365f3e421d481b5c40290f0cc6a1ff44dcf0f50add1d06761cf2a7ae8"
+    }
+    "vGPU"   = @{
+        "Filename" = "582.16_grid_win10_win11_server2022_server2025_dch_64bit_international_gcp_swl.exe"
+        "Hash"     = "7ec03459d182048b4c2bb08f63c5402d80bae06a4d3f42ced294309f863d4f68"
+    }
+}
+
 $TempDir = [System.IO.Path]::GetTempPath()
 $InstallerName = "nvidia_driver_installer.exe"
 $InstallerPath = Join-Path -Path $TempDir -ChildPath $InstallerName
@@ -65,6 +73,36 @@ function Get-GcpMultiRegion {
     return "us"
 }
 
+# --- Functions for Machine Type Detection ---
+function Get-MachineType {
+    try {
+        Write-Host "Detecting Machine Type..." -ForegroundColor Cyan
+        
+        $MachineTypeUrl = "http://metadata.google.internal/computeMetadata/v1/instance/machine-type"
+        $Response = Invoke-RestMethod -Uri $MachineTypeUrl -Headers @{"Metadata-Flavor" = "Google"} -TimeoutSec 5 -ErrorAction Stop
+        
+        # projects/PROJECT_ID/machineTypes/MACHINE_TYPE
+        $MachineType = $Response.Split('/')[-1]
+        Write-Host "Detected machine type: $MachineType" -ForegroundColor Green
+        
+        if ($MachineType -in ('g4-standard-6', 'g4-standard-12', 'g4-standard-24')) {
+            return "vGPU"
+        }
+        
+        $InstanceUrl = "http://metadata.google.internal/computeMetadata/v1/instance/"
+        $Response = Invoke-RestMethod -Uri $InstanceUrl -Headers @{"Metadata-Flavor" = "Google"} -TimeoutSec 5 -ErrorAction Stop
+        
+        if ($Response -like "*nvidia-grid-license*") {
+            # Virtual Workstation
+            return "Normal" 
+        }
+    }
+    catch {
+        Write-Warning "Could not detect machine type via metadata server. Defaulting to 'Normal'."
+    }
+    return "Normal"
+}
+
 # --- Functions for GPU Detection ---
 function Get-Mgmt-Command {
     $Command = 'Get-CimInstance'
@@ -90,6 +128,12 @@ function Find-GPU {
 
 # --- Step 0: Determine Download URL ---
 $MultiRegion = Get-GcpMultiRegion
+$MachineType = Get-MachineType
+
+$DriverInfo = $Drivers[$MachineType]
+$DriverVersionFilename = $DriverInfo["Filename"]
+$ExpectedSha256 = $DriverInfo["Hash"]
+
 $DriverUrl = "https://storage.googleapis.com/compute-gpu-installation-$MultiRegion/windows/$DriverVersionFilename"
 
 # --- Step 1: Check for GPU Presence ---

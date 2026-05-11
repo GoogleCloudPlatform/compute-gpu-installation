@@ -3,7 +3,12 @@
 This script installs the latest supported NVIDIA GPU drivers for Google Cloud
 Windows VM on Compute Engine.
 
+The script automatically detects the machine type it's running on. If it detects
+a fractional VM (vGPU), such as `g4-standard-6`, `g4-standard-12`, or `g4-standard-24`, 
+it will install the specific driver version required for those instances.
+
 ## Usage Instructions
+
 
 To use this script you must run it as an Administrator:
 
