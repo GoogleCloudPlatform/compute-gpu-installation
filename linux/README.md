@@ -67,6 +67,10 @@ in the distribution repositories.
 | v1.6.0  | 575.57.08 (cuda: 12.9.1) | 570.172.08 (cuda: 12.8.1) | 535.261.03 (cuda: 12.2.2) | n/a                       | n/a        |
 | v1.5.0  | 575.57.08 (cuda: 12.9.1) | 570.158.01 (cuda: 12.8.1) | n/a                       | n/a                       | n/a        |
 
+You can force the installer to install a specific version of a driver. First, you can list the available versions using
+`cuda_installer.pyz list_driver_versions`. If the version you want installed is on the list, you can do that using 
+`cuda_installer.pyz install_driver --force-version <VERSION>` - this will automatically switch the installation mode to
+`binary`.
 
 ## Running the tool
 
