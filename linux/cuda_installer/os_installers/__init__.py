@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import abc
+import functools
 import os
 import pathlib
 import re
@@ -466,12 +467,15 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                     check=self.check_gpu_present(),
                 )
 
-    def verify_cuda(self) -> bool:
+    def verify_cuda(self, branch: str | None=None) -> bool:
         """
         Make sure that CUDA Toolkit is properly installed by compiling and executing CUDA code samples.
         """
-        branch = self.get_installation_mode()[1]
+        if branch is None:
+            branch = self.get_installation_mode()[1]
+
         cuda_samples_version = config.VERSION_MAP[branch]["cuda"]["samples"]
+        cuda_samples_folder = config.VERSION_MAP[branch]["cuda"]["samples_folder"]
         cuda_samples_url = CUDA_SAMPLES_URL.format(
             MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version
         )
@@ -495,7 +499,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                     self.run("cmake .", check=False)
                 with chdir(
                     temp_dir
-                    / f"cuda-samples-{cuda_samples_version}/Samples/1_Utilities/deviceQuery"
+                    / f"cuda-samples-{cuda_samples_version}/{cuda_samples_folder}/1_Utilities/deviceQuery"
                 ):
                     self.run("make", check=True)
                     dev_query = self.run("./deviceQuery", check=True)
@@ -506,7 +510,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                         return False
                 with chdir(
                     temp_dir
-                    / f"cuda-samples-{cuda_samples_version}/Samples/6_Performance/transpose"
+                    / f"cuda-samples-{cuda_samples_version}/{cuda_samples_folder}/6_Performance/transpose"
                 ):
                     self.run("make", check=True)
                     bandwidth = self.run("./transpose", check=True)
@@ -592,13 +596,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 try_count += 1
                 continue
 
-        if check and proc.returncode:
+        if check and proc.returncode != 0:
             logger.error("Command exited with non-zero code.")
             logger.error("Stdout:\n" + "\n".join(stdout))
             logger.error("Stderr:\n" + "\n".join(stderr))
             logger.error("--------------------------------")
-            if check:
-                raise subprocess.SubprocessError("Command exited with non-zero code")
+            raise subprocess.CalledProcessError(proc.returncode, command, "\n".join(stdout), "\n".join(stderr))
 
         return subprocess.CompletedProcess(
             command, proc.returncode, stdout="\n".join(stdout), stderr="\n".join(stderr)
@@ -768,6 +771,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         return file_path
 
     @staticmethod
+    @functools.cache
     def _detect_linux_distro() -> (System, str):
         """
         Checks the /etc/os-release file to figure out what distribution of OS

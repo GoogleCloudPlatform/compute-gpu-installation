@@ -29,16 +29,16 @@ VPC_NETWORK = "cuda-installer-test-network"
 
 
 OPERATING_SYSTEMS = (
-    ("debian-cloud", "debian-12"),
-    ("debian-cloud", "debian-13"),
-    ("rhel-cloud", "rhel-8"),
-    ("rhel-cloud", "rhel-9"),
-    ("rhel-cloud", "rhel-10"),
+    # ("debian-cloud", "debian-12"),
+    # ("debian-cloud", "debian-13"),
+    # ("rhel-cloud", "rhel-8"),
+    # ("rhel-cloud", "rhel-9"),
+    # ("rhel-cloud", "rhel-10"),
     ("rocky-linux-cloud", "rocky-linux-8"),
     ("rocky-linux-cloud", "rocky-linux-9"),
     ("rocky-linux-cloud", "rocky-linux-10"),
-    ("ubuntu-os-cloud", "ubuntu-2204-lts"),
-    ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
+    # ("ubuntu-os-cloud", "ubuntu-2204-lts"),
+    # ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
     # ("ubuntu-os-cloud", "ubuntu-2604-lts-amd64"),
 )
 
@@ -50,11 +50,11 @@ GPUS = {
     # "A100": "nvidia-tesla-a100",
     # "P4": "nvidia-tesla-p4",
     "T4": "nvidia-tesla-t4",
-    "T4-VWS": "nvidia-tesla-t4-vws",
+    # "T4-VWS": "nvidia-tesla-t4-vws",
     # "P100": "nvidia-tesla-p100",
     # "V100": "nvidia-tesla-v100",
     # "G4": "nvidia-rtx-pro-6000",
-    "vG4": "nvidia-rtx-pro-6000",
+    # "vG4": "nvidia-rtx-pro-6000",
 }
 GPU_QUOTA_SEMAPHORES = {
     "L4": BoundedSemaphore(8),
@@ -91,7 +91,8 @@ ZONES = {
     ),
     "P100": ("us-central1-c",),
     "V100": ("us-central1-a",),
-    "G4": ("us-central1-b", "us-central1-f", "europe-north1-a", "europe-north1-b"),
+    # "G4": ("us-central1-b", "us-central1-f", "europe-north1-a", "europe-north1-b"),
+    "G4": ("europe-north1-c", "europe-north1-b"),
     "vG4": ("us-central1-b",),
 }
 MACHINE_TYPES = {
