@@ -41,6 +41,8 @@ def test_image_building(
     """
     if base_os.startswith("debian") and mode == "repo" and branch == "prod":
         pytest.skip("Debian 12 doesn't support repo x prod installation.")
+    if base_os.startswith('ubuntu-2604') and mode == "binary" and branch != "nfb":
+        pytest.skip("Currently Ubuntu 26 supports only Cuda 13.3 toolkit.")
     if branch == "lts" and mode == "repo":
         pytest.skip("LTS branch doesn't work for repo mode.")
     test_id = uuid.uuid4().hex[:8]
