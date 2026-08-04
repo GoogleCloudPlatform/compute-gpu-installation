@@ -57,9 +57,6 @@ VERSION_MAP = {
             "patch": "1",
             "driver": "595.58.03",
             "hash": "5514a3fe7bcea92b25073c7c100c3e64e7961a7e1dbad6955adb8b59806053f0",
-            "samples": "13.2",
-            "samples_hash": "c7d8da987a43fd6ed7c2641df204dfc639768adbae070bc22f9df0e03005f7de",
-            "samples_folder": "Samples",
         },
     },
     "nfb": {
@@ -72,9 +69,6 @@ VERSION_MAP = {
             "patch": "0",
             "driver": "610.43.02",
             "hash": "5f79488b57fe6936bc95a56f9b7e2838ab2f2ee3313b1008942206eebe06352d",
-            "samples": "13.3",
-            "samples_hash": "fab59f405d6c0b87395ce6fc1d46d3f559c380c9a2704ab14d6dc0d3ce1cff16",
-            "samples_folder": "cpp",
         },
     },
     "lts": {
@@ -87,11 +81,47 @@ VERSION_MAP = {
             "patch": "2",
             "driver": "580.95.05",
             "hash": "81a5d0d0870ba2022efb0a531dcc60adbdc2bbff7b3ef19d6fd6d8105406c775",
-            "samples": "13.0",
-            "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
-            "samples_folder": "Samples",
         },
     },
+}
+
+CUDA_SAMPLES = {
+    "12.2": {
+        "samples_hash": "1823cfe28e97a9230107aa72b231f78952c0f178b71a920f036d360518480bdc",
+        "samples_folder": "Samples",
+    },
+    "12.4": {
+        "samples_hash": "aa28fa2227768dd31ebbf9cd48b265a0c8810fae03e02c6079c0fa71bbea7319",
+        "samples_folder": "Samples",
+    },
+    "12.5": {
+        "samples_hash": "5c40cc096706045b067ec5897f039403014aa7a39b970905698466a2d029b972",
+        "samples_folder": "Samples",
+    },
+    "12.8": {
+        "samples_hash": "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d",
+        "samples_folder": "Samples",
+    },
+    "12.9": {
+        "samples_hash": "2e67e1f6bdb15bf11b21e07e988e2f9f60fb054eff51ef01cebdd47229788015",
+        "samples_folder": "Samples",
+    },
+    "13.0": {
+        "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
+        "samples_folder": "Samples",
+    },
+    "13.1": {
+        "samples_hash": "03d7748a773fcd2350c2de88f2d167252c78ea90a52e229e7eb2a6922e3ba350",
+        "samples_folder": "Samples",
+    },
+    "13.2": {
+        "samples_hash": "c7d8da987a43fd6ed7c2641df204dfc639768adbae070bc22f9df0e03005f7de",
+        "samples_folder": "Samples",
+    },
+    "13.3": {
+        "samples_hash": "fab59f405d6c0b87395ce6fc1d46d3f559c380c9a2704ab14d6dc0d3ce1cff16",
+        "samples_folder": "cpp",
+    }
 }
 
 for branch in VERSION_MAP.keys():

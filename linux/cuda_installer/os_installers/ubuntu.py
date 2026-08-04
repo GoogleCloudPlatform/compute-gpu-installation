@@ -55,9 +55,11 @@ class UbuntuInstaller(LinuxInstaller):
         """
         self.run("apt-get update")
 
+        pkgs = ['linux-image-gcp', 'linux-headers-gcp', 'libc-dev', 'gcc', 'make', 'dkms', 'pciutils',
+                'software-properties-common', 'cmake', 'git', 'g++']
+
         self.run(
-            "apt-get install -y linux-image-gcp linux-headers-gcp "
-            "gcc make dkms pciutils software-properties-common cmake git"
+            f"apt-get install -y {' '.join(pkgs)}"
         )
         raise RebootRequired
 
@@ -106,10 +108,15 @@ class UbuntuInstaller(LinuxInstaller):
                     secure_boot_private_key=secure_boot_private_key,
                 )
 
+        if version in ("24.04", "26.04"):
+            driver_pkg = "nvidia-driver-open"
+        else:
+            driver_pkg = "nvidia-open"
+
         try:
             logger.info("Installing GPU driver...")
-            self.run(f"apt-get install -yq nvidia-open")
-            self.run(f"apt-mark hold nvidia-open")
+            self.run(f"apt-get install -yq {driver_pkg}")
+            self.run(f"apt-mark hold {driver_pkg}")
         finally:
             if secure_boot_public_key and secure_boot_private_key:
                 self.remove_custom_dkms_signing_keys()
@@ -131,18 +138,15 @@ class UbuntuInstaller(LinuxInstaller):
     def verify_cuda(self) -> bool:
         system, version = self._detect_linux_distro()
         version_number = int(version.rsplit('.')[0])
-        if version_number == 26:
-            return super().verify_cuda(branch='nfb')
-        else:
-            return super().verify_cuda()
+        return super().verify_cuda()
 
     def _install_cuda_binary(self, branch: str):
         system, version = self._detect_linux_distro()
         assert system == System.Ubuntu
         version_number = int(version.rsplit('.')[0])
-        major = VERSION_MAP[branch]["cuda"]["major"]
-        minor = VERSION_MAP[branch]["cuda"]["minor"]
-        if version_number < 26 and major <= 13 and minor < 3:
-            logger.error(f"Sorry, the selected version of CUDA Toolkit is incompatible with Ubuntu {version_number}.")
-            sys.exit(1)
+        major = int(VERSION_MAP[branch]["cuda"]["major"])
+        minor = int(VERSION_MAP[branch]["cuda"]["minor"])
+        # if version_number < 26 and major <= 13 and minor < 3:
+        #     logger.error(f"Sorry, the selected version of CUDA Toolkit is incompatible with Ubuntu {version_number}.")
+        #     sys.exit(1)
         super()._install_cuda_binary(branch)

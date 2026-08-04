@@ -226,7 +226,7 @@ def _test_setup(
     if mode == "repo" and os_name.startswith("debian") and branch == "prod":
         pytest.skip("Repo mode for prod branch doesn't work on Debian 12.")
 
-    if os_name in ('debian12', 'ubuntu-2204-lts') and branch == 'nfb':
+    if os_name in ('debian-12', 'ubuntu-2204-lts') and branch == 'nfb':
         pytest.skip("NFB branch is not supported on Debian 12 and Ubuntu 22.04.")
 
     if os_name.startswith('ubuntu-2604') and mode == "binary" and branch != "nfb":
@@ -358,14 +358,14 @@ def _test_setup(
         return _test_body(zone, instance_name, gpu, ssh_key, branch, expected_version)
     finally:
         try:
-            print("This is where I'd delete the instance, but we keep it for debugging.")
-            # instance_client = compute_v1.InstancesClient()
-            # operation = instance_client.delete(
-            #     project=PROJECT, zone=zone, instance=instance_name
-            # )
-            # operation.result()
-            # if operation.error:
-            #     pytest.fail(f"Could not delete instance: {operation.error_message}")
+            # print("This is where I'd delete the instance, but we keep it for debugging.")
+            instance_client = compute_v1.InstancesClient()
+            operation = instance_client.delete(
+                project=PROJECT, zone=zone, instance=instance_name
+            )
+            operation.result()
+            if operation.error:
+                pytest.fail(f"Could not delete instance: {operation.error_message}")
         except google.api_core.exceptions.NotFound:
             # The instance was not properly created at all.
             pass

@@ -29,17 +29,17 @@ VPC_NETWORK = "cuda-installer-test-network"
 
 
 OPERATING_SYSTEMS = (
-    # ("debian-cloud", "debian-12"),
-    # ("debian-cloud", "debian-13"),
-    # ("rhel-cloud", "rhel-8"),
-    # ("rhel-cloud", "rhel-9"),
-    # ("rhel-cloud", "rhel-10"),
+    ("debian-cloud", "debian-12"),
+    ("debian-cloud", "debian-13"),
+    ("rhel-cloud", "rhel-8"),
+    ("rhel-cloud", "rhel-9"),
+    ("rhel-cloud", "rhel-10"),
     ("rocky-linux-cloud", "rocky-linux-8"),
     ("rocky-linux-cloud", "rocky-linux-9"),
     ("rocky-linux-cloud", "rocky-linux-10"),
-    # ("ubuntu-os-cloud", "ubuntu-2204-lts"),
-    # ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
-    # ("ubuntu-os-cloud", "ubuntu-2604-lts-amd64"),
+    ("ubuntu-os-cloud", "ubuntu-2204-lts"),
+    ("ubuntu-os-cloud", "ubuntu-2404-lts-amd64"),
+    ("ubuntu-os-cloud", "ubuntu-2604-lts-amd64"),
 )
 
 BRANCHES = ("prod", "nfb", "lts")
