@@ -15,7 +15,7 @@ The tool supports the following operating systems (x86_64/amd64 architecture):
 * Debian: version 12 and 13
 * RHEL: versions 8, 9 and 10
 * Rocky: version 8, 9 and 10
-* Ubuntu: version 22 and 24
+* Ubuntu: version 22, 24 and 26
 
 For repository installation method, the version of the driver and CUDA Toolkit installed 
 depends on the distribution repositories. Sometimes it can even be a "beta" branch version.
@@ -60,6 +60,7 @@ in the distribution repositories.
 
 | release | new feature branch       | prod branch               | long term support branch  | RTX (Virtual Workstation) | vGPU       |
 |---------|--------------------------|---------------------------|---------------------------|---------------------------|------------|
+| v1.9.1  | 610.43.02 (cuda: 13.3.0) | 595.84 (cuda: 13.2.1)     | 580.159.04 (cuda: 13.0.2) | 595.71.05 (cuda: 13.2.1)  | 580.159.03 |
 | v1.9.0  | 590.48.01 (cuda: 13.1.2) | 595.71.05 (cuda: 13.2.1)  | 580.159.03 (cuda: 13.0.2) | 595.71.05 (cuda: 13.2.1)  | 580.126.09 |
 | v1.8.1  | 590.48.01 (cuda: 13.1.2) | 580.126.20 (cuda: 13.0.2) | 580.126.20 (cuda: 13.0.2) | 580.126.09 (cuda: 13.0.2) | n/a        |
 | v1.8.0  | 590.48.01 (cuda: 13.1.1) | 580.105.08 (cuda: 13.0.2) | 580.105.08 (cuda: 13.0.2) | 580.105.08 (cuda: 13.0.2) | n/a        |
@@ -180,7 +181,7 @@ This will save `mok.der` and `mok.key` to the specified directory.
 ### Other Options
 
 *   `--base-image <OS>`: Specify the base OS image. Supported options include `debian-12`, `debian-13`, `rhel-8`, 
-    `rhel-9`, `rocky-8`, `rocky-9`, `ubuntu-22`, `ubuntu-24`. Defaults to `ubuntu-24`.
+    `rhel-9`, `rocky-8`, `rocky-9`, `ubuntu-22`, `ubuntu-24`, `ubuntu-26`. Defaults to `ubuntu-24`.
 *   `--driver-only`: Use this flag if you only want to install the NVIDIA driver and skip the CUDA Toolkit installation.
 *   `--installation-mode <MODE>`: Choose between `repo` (default) or `binary` installation methods.
 *   `--installation-branch <BRANCH>`: Choose between `prod` (production branch) and `nfb` (new feature branch). Default: `prod`.
