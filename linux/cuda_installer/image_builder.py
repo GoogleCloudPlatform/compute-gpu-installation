@@ -46,7 +46,7 @@ BASE_IMAGES_MAP = {
     # Ubuntu
     "ubuntu-22": "image-family=ubuntu-2204-lts,image-project=ubuntu-os-cloud",
     "ubuntu-24": "image-family=ubuntu-2404-lts-amd64,image-project=ubuntu-os-cloud",
-    # "ubuntu-26": "image-family=ubuntu-2604-lts-amd64,image-project=ubuntu-os-cloud",
+    "ubuntu-26": "image-family=ubuntu-2604-lts-amd64,image-project=ubuntu-os-cloud",
 }
 
 AVAILABLE_BASE_IMAGES = ", ".join(BASE_IMAGES_MAP.keys())
@@ -211,9 +211,9 @@ class Builder:
             atexit.register(lambda: self.delete_vm(instance_name))
         # Giving a moment for the VM to start up
         print(
-            f"Build VM created ({instance_name}). Waiting 30 seconds to let it properly start..."
+            f"Build VM created ({instance_name}). Waiting 60 seconds to let it properly start..."
         )
-        time.sleep(30)
+        time.sleep(60)
         return
 
     def delete_vm(self, instance_name: str):
@@ -333,6 +333,7 @@ class Builder:
                 f"{instance_name}:~/public.der",
             ],
             check=True,
+            timeout=300,
         )
         subprocess.run(
             [
@@ -347,6 +348,7 @@ class Builder:
                 f"{instance_name}:~/private.key",
             ],
             check=True,
+            timeout=300,
         )
         return
 

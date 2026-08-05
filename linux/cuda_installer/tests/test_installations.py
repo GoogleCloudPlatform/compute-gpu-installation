@@ -221,14 +221,22 @@ def _test_setup(
     Run the installation test for given operating system and GPU card.
     """
 
-    if mode == "repo" and opsys[1].startswith("debian") and branch == "prod":
+    os_name = opsys[1]
+
+    if mode == "repo" and os_name.startswith("debian") and branch == "prod":
         pytest.skip("Repo mode for prod branch doesn't work on Debian 12.")
+
+    if os_name in ('debian-12', 'ubuntu-2204-lts') and branch == 'nfb':
+        pytest.skip("NFB branch is not supported on Debian 12 and Ubuntu 22.04.")
+
+    if os_name.startswith('ubuntu-2604') and mode == "binary" and branch != "nfb":
+        pytest.skip("Currently Ubuntu 26 supports only Cuda 13.3 toolkit.")
 
     if branch == "lts" and mode == "repo":
         pytest.skip("LTS branch doesn't work for repo mode.")
 
     op_sys_image = get_image_from_family(*opsys)
-    if gpu == "vG4":
+    if gpu in ("vG4", "G4"):
         disks = [_get_boot_disk(op_sys_image.self_link, zone, "hyperdisk-balanced")]
     else:
         disks = [_get_boot_disk(op_sys_image.self_link, zone, "pd-ssd")]
@@ -350,15 +358,14 @@ def _test_setup(
         return _test_body(zone, instance_name, gpu, ssh_key, branch, expected_version)
     finally:
         try:
-            instance_client = compute_v1.InstancesClient()
             # print("This is where I'd delete the instance, but we keep it for debugging.")
+            instance_client = compute_v1.InstancesClient()
             operation = instance_client.delete(
                 project=PROJECT, zone=zone, instance=instance_name
             )
             operation.result()
             if operation.error:
                 pytest.fail(f"Could not delete instance: {operation.error_message}")
-            # operation_client.wait(project=PROJECT, zone=zone, operation=operation.name)
         except google.api_core.exceptions.NotFound:
             # The instance was not properly created at all.
             pass
@@ -380,7 +387,7 @@ def _test_body(
     time.sleep(30)  # Let the instance start
     tries = 0
     while time.time() - start_time <= INSTALLATION_TIMEOUT:
-        time.sleep(30)
+        time.sleep(20)
         try:
             tries += 1
             process = subprocess.run(
@@ -428,6 +435,10 @@ def _test_body(
                     text=True,
                     timeout=600,
                 )
+                if "Failed to initialize session: could not read success: websocket" in process.stderr:
+                    # Try again
+                    time.sleep(5)
+                    continue
                 if "CMake 3.20 or higher is required." in process.stdout:
                     pytest.skip(
                         "CMake 3.20 or higher is required. Skipping the sample verification (nvidia-smi worked)."
@@ -470,10 +481,10 @@ def _test_body(
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
-        timeout=60,
+        timeout=300,
     )
     # assert f"driver version: {expected_version}" in process.stdout.lower()
-    if gpu.lower() == "vg4":
+    if gpu.lower() in ("vg4", "g4"):
         assert "rtx pro 6000" in process.stdout.lower()
     else:
         assert gpu.lower() in process.stdout.lower()
@@ -494,6 +505,6 @@ def _test_body(
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         text=True,
-        timeout=60,
+        timeout=300,
     )
     return process.stdout

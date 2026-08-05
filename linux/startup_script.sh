@@ -13,4 +13,6 @@ then
 fi
 
 curl -fSsL -O https://storage.googleapis.com/compute-gpu-installation-us/installer/latest/cuda_installer.pyz
-python3 cuda_installer.pyz install_cuda
+python3 cuda_installer.pyz install_driver
+# Or uncomment the line below to also install CUDA Toolkit
+# python3 cuda_installer.pyz install_cuda

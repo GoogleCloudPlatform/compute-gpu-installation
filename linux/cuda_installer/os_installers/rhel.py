@@ -40,7 +40,7 @@ class RHELInstaller(DNFSystemInstaller):
         else:
             self.run("dnf install -y epel-release")
         self.run(
-            "dnf --refresh install -y kernel kernel-devel kernel-headers gcc gcc-c++ make bzip2 cmake dkms"
+            "dnf --refresh install -y kernel kernel-devel kernel-headers gcc gcc-c++ make bzip2 cmake dkms git"
         )
         raise RebootRequired
 

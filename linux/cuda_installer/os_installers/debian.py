@@ -84,7 +84,7 @@ class DebianInstaller(LinuxInstaller):
 
         self.run(
             f"apt-get install -y make gcc {wanted_kernel_package} {wanted_kernel_headers} "
-            f"pciutils gcc make dkms cmake"
+            f"pciutils gcc make dkms cmake git"
         )
         raise RebootRequired
 
@@ -115,7 +115,7 @@ class DebianInstaller(LinuxInstaller):
         )
 
     def _repo_uninstall_driver(self):
-        self.run("apt-get remove -y cuda-drivers")
+        self.run("apt-get remove -y nvidia-open")
 
     def _repo_install_driver(
         self,
@@ -138,8 +138,8 @@ class DebianInstaller(LinuxInstaller):
 
         try:
             logger.info("Installing GPU driver...")
-            self.run(f"apt-get install -yq cuda-drivers")
-            self.run(f"apt-mark hold cuda-drivers")
+            self.run(f"apt-get install -yq nvidia-open")
+            self.run(f"apt-mark hold nvidia-open")
         finally:
             if secure_boot_public_key and secure_boot_private_key:
                 self.remove_custom_dkms_signing_keys()

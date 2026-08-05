@@ -32,7 +32,7 @@ except PermissionError:
 if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
     VERSION = "debug"
 else:
-    VERSION = "v1.9.0"
+    VERSION = "v1.9.1"
 
 class SpecialMachine(Enum):
     Normal = 0
@@ -43,13 +43,13 @@ class SpecialMachine(Enum):
 VERSION_MAP = {
     "prod": {
         "driver": {
-            "version": "595.71.05",
+            "version": "595.84",
         },
         "rtx-driver": {
             "version": "595.71.05-grid",
         },
         "vgpu-driver": {
-            "version": "580.126.09-grid-gcp",
+            "version": "580.159.03-grid-gcp",
         },
         "cuda": {
             "major": "13",
@@ -57,27 +57,23 @@ VERSION_MAP = {
             "patch": "1",
             "driver": "595.58.03",
             "hash": "5514a3fe7bcea92b25073c7c100c3e64e7961a7e1dbad6955adb8b59806053f0",
-            "samples": "13.2",
-            "samples_hash": "c7d8da987a43fd6ed7c2641df204dfc639768adbae070bc22f9df0e03005f7de",
         },
     },
     "nfb": {
         "driver": {
-            "version": "590.48.01",
+            "version": "610.43.02",
         },
         "cuda": {
             "major": "13",
-            "minor": "1",
-            "patch": "1",
-            "driver": "590.48.01",
-            "hash": "24ff323723722781436804b392a48f691cb40de9808095d3e2192d0db6dfb8e4",
-            "samples": "13.1",
-            "samples_hash": "03d7748a773fcd2350c2de88f2d167252c78ea90a52e229e7eb2a6922e3ba350",
+            "minor": "3",
+            "patch": "0",
+            "driver": "610.43.02",
+            "hash": "5f79488b57fe6936bc95a56f9b7e2838ab2f2ee3313b1008942206eebe06352d",
         },
     },
     "lts": {
         "driver": {
-            "version": "580.159.03",
+            "version": "580.159.04",
         },
         "cuda": {
             "major": "13",
@@ -85,10 +81,47 @@ VERSION_MAP = {
             "patch": "2",
             "driver": "580.95.05",
             "hash": "81a5d0d0870ba2022efb0a531dcc60adbdc2bbff7b3ef19d6fd6d8105406c775",
-            "samples": "13.0",
-            "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
         },
     },
+}
+
+CUDA_SAMPLES = {
+    "12.2": {
+        "samples_hash": "1823cfe28e97a9230107aa72b231f78952c0f178b71a920f036d360518480bdc",
+        "samples_folder": "Samples",
+    },
+    "12.4": {
+        "samples_hash": "aa28fa2227768dd31ebbf9cd48b265a0c8810fae03e02c6079c0fa71bbea7319",
+        "samples_folder": "Samples",
+    },
+    "12.5": {
+        "samples_hash": "5c40cc096706045b067ec5897f039403014aa7a39b970905698466a2d029b972",
+        "samples_folder": "Samples",
+    },
+    "12.8": {
+        "samples_hash": "fe82484f9a87334075498f4e023a304cc70f240a285c11678f720f0a1e54a89d",
+        "samples_folder": "Samples",
+    },
+    "12.9": {
+        "samples_hash": "2e67e1f6bdb15bf11b21e07e988e2f9f60fb054eff51ef01cebdd47229788015",
+        "samples_folder": "Samples",
+    },
+    "13.0": {
+        "samples_hash": "63cc9d5d8280c87df3c1f4e2276234a0f42cc497c52b40dd5bdda2836607db79",
+        "samples_folder": "Samples",
+    },
+    "13.1": {
+        "samples_hash": "03d7748a773fcd2350c2de88f2d167252c78ea90a52e229e7eb2a6922e3ba350",
+        "samples_folder": "Samples",
+    },
+    "13.2": {
+        "samples_hash": "c7d8da987a43fd6ed7c2641df204dfc639768adbae070bc22f9df0e03005f7de",
+        "samples_folder": "Samples",
+    },
+    "13.3": {
+        "samples_hash": "fab59f405d6c0b87395ce6fc1d46d3f559c380c9a2704ab14d6dc0d3ce1cff16",
+        "samples_folder": "cpp",
+    }
 }
 
 for branch in VERSION_MAP.keys():
@@ -155,6 +188,7 @@ NVIDIA_KEYRING_SHA256_SUMS = {
         "2004": "cf5ca9853118b9fb2b78dd2708786e1eb5ab14e39d8738539281429428eb4efe",
         "2204": "d93190d50b98ad4699ff40f4f7af50f16a76dac3bb8da1eaaf366d47898ff8df",
         "2404": "d2a6b11c096396d868758b86dab1823b25e14d70333f1dfa74da5ddaf6a06dba",
+        "2604": "f7f474b5f6a4adf987aa587920df00e713285958ef6a913dda1945a544a3099e",
     },
     "debian": {
         "12": "e7f219eab6fe4819cdb5c15b98233dc3420302d9c00883219cd3d896857cf48d",

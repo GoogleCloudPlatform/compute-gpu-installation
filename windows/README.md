@@ -9,7 +9,6 @@ it will install the specific driver version required for those instances.
 
 ## Usage Instructions
 
-
 To use this script you must run it as an Administrator:
 
 Start-Process powershell -Verb RunAs -ArgumentList "-file

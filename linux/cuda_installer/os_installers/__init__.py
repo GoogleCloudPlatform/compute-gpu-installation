@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import abc
+import functools
 import os
 import pathlib
 import re
@@ -365,7 +366,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
             self._install_cuda_repo(branch)
 
         logger.info("Executing post-installation actions...")
-        self.cuda_postinstallation_actions(branch)
+        self.cuda_postinstallation_actions(installation_mode, branch)
         logger.info("CUDA post-installation actions completed!")
         raise RebootRequired
 
@@ -393,7 +394,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         except RebootRequired:
             self.reboot()
 
-    def cuda_postinstallation_actions(self, branch: str):
+    def cuda_postinstallation_actions(self, installation_mode: str, branch: str):
         """
         Perform required and suggested post-installation actions:
         * set environment variables
@@ -402,16 +403,20 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
         More info: https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions
         """
-        cuda_major = config.VERSION_MAP[branch]["cuda"]["major"]
-        cuda_minor = config.VERSION_MAP[branch]["cuda"]["minor"]
-        cuda_patch = config.VERSION_MAP[branch]["cuda"]["patch"]
+        if installation_mode == "repo":
+            cuda_bin_folder = "/usr/local/cuda/bin"
+            cuda_lib_folder = "/usr/local/cuda/lib64"
+        else:
+            cuda_major = config.VERSION_MAP[branch]["cuda"]["major"]
+            cuda_minor = config.VERSION_MAP[branch]["cuda"]["minor"]
+            cuda_patch = config.VERSION_MAP[branch]["cuda"]["patch"]
 
-        cuda_bin_folder = CUDA_BIN_FOLDER.format(
-            CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor
-        )
-        cuda_lib_folder = CUDA_LIB_FOLDER.format(
-            CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor
-        )
+            cuda_bin_folder = CUDA_BIN_FOLDER.format(
+                CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor
+            )
+            cuda_lib_folder = CUDA_LIB_FOLDER.format(
+                CUDA_MAJOR=cuda_major, CUDA_MINOR=cuda_minor
+            )
 
         os.environ["PATH"] = f"{cuda_bin_folder}:{os.environ['PATH']}"
         if "LD_LIBRARY_PATH" in os.environ:
@@ -470,15 +475,24 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         """
         Make sure that CUDA Toolkit is properly installed by compiling and executing CUDA code samples.
         """
-        branch = self.get_installation_mode()[1]
-        cuda_samples_version = config.VERSION_MAP[branch]["cuda"]["samples"]
+        try:
+            nvcc_output = self.run("nvcc --version", silent=True).stdout.strip()
+            cuda_samples_version = re.findall(r"Build cuda_(\d\d\.\d\d?)", nvcc_output)[0]
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to get CUDA version: {e}")
+            return False
+        except IndexError:
+            logger.error(f"Failed to get CUDA version from nvcc --version: {nvcc_output}")
+            return False
+
         cuda_samples_url = CUDA_SAMPLES_URL.format(
             MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version
         )
         cuda_samples_gs_uri = CUDA_SAMPLES_GS_URI.format(
             MULTIREGION=config.MULTIREGION, CUDA_SAMPLES_VERSION=cuda_samples_version
         )
-        cuda_samples_hash = config.VERSION_MAP[branch]["cuda"]["samples_hash"]
+        cuda_samples_hash = config.CUDA_SAMPLES[cuda_samples_version]["samples_hash"]
+        cuda_samples_folder = config.CUDA_SAMPLES[cuda_samples_version]["samples_folder"]
 
         logger.info("Verifying CUDA installation...")
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -495,7 +509,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                     self.run("cmake .", check=False)
                 with chdir(
                     temp_dir
-                    / f"cuda-samples-{cuda_samples_version}/Samples/1_Utilities/deviceQuery"
+                    / f"cuda-samples-{cuda_samples_version}/{cuda_samples_folder}/1_Utilities/deviceQuery"
                 ):
                     self.run("make", check=True)
                     dev_query = self.run("./deviceQuery", check=True)
@@ -506,7 +520,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                         return False
                 with chdir(
                     temp_dir
-                    / f"cuda-samples-{cuda_samples_version}/Samples/6_Performance/transpose"
+                    / f"cuda-samples-{cuda_samples_version}/{cuda_samples_folder}/6_Performance/transpose"
                 ):
                     self.run("make", check=True)
                     bandwidth = self.run("./transpose", check=True)
@@ -592,13 +606,12 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 try_count += 1
                 continue
 
-        if check and proc.returncode:
+        if check and proc.returncode != 0:
             logger.error("Command exited with non-zero code.")
             logger.error("Stdout:\n" + "\n".join(stdout))
             logger.error("Stderr:\n" + "\n".join(stderr))
             logger.error("--------------------------------")
-            if check:
-                raise subprocess.SubprocessError("Command exited with non-zero code")
+            raise subprocess.CalledProcessError(proc.returncode, command, "\n".join(stdout), "\n".join(stderr))
 
         return subprocess.CompletedProcess(
             command, proc.returncode, stdout="\n".join(stdout), stderr="\n".join(stderr)
@@ -768,6 +781,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         return file_path
 
     @staticmethod
+    @functools.lru_cache(maxsize=None)
     def _detect_linux_distro() -> (System, str):
         """
         Checks the /etc/os-release file to figure out what distribution of OS
