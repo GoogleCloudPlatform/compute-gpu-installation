@@ -81,10 +81,12 @@ drivers or CUDA Toolkit (for example `sudo python3 cuda_installer.pyz`).
 ### Installing the driver
 
 To install NVIDIA driver use `sudo python3 cuda_installer.pyz install_driver`. The script
-will update your system, lock kernel updates and install the driver. **The process will most 
+will update your system and install the driver (using `repo` mode by default). **The process will most 
 likely be interrupted by a reboot. In that case, call the same command again**, until the
 script indicates that the installation is completed. You can verify that with
 `python3 cuda_installer.pyz verify_driver` or by calling `nvidia-smi`.
+
+> **Note on Kernel Updates and Patch Management:** By default (`--installation-mode=repo`), kernel updates are **not** locked and Dynamic Kernel Module Support (DKMS) automatically rebuilds the NVIDIA driver when the kernel is updated. However, when running in `binary` installation mode (triggered by `--installation-mode=binary`, `--force-version`, `--installation-branch=lts`, or on NVIDIA RTX Virtual Workstation / vGPU VMs), the script locks guest OS kernel meta-packages (`apt-mark hold` on `linux-image-gcp`/`linux-headers-gcp` on Ubuntu and `linux-image-cloud-amd64`/`linux-headers-cloud-amd64` on Debian, or `exclude=kernel*` in `/etc/dnf/dnf.conf` on RHEL/Rocky Linux). If you update the kernel manually or via enterprise patch management tools (such as BigFix, OS Config, or Ansible) that install explicit versioned `linux-image-<version>` packages, you must also explicitly install the matching `linux-headers-$(uname -r)` (or `kernel-devel-$(uname -r)`) package so DKMS can build the driver module for the new kernel.
 
 If you want to install the driver on a system without GPU (to prepare a Disk Image for example)
 you will have to add `--ignore-no-gpu` flag to that command above.

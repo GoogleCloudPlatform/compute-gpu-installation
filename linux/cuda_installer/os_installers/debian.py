@@ -70,7 +70,9 @@ class DebianInstaller(LinuxInstaller):
 
         # Find the newest version of kernel to update to, but staying with the same major version
         packages = self.run("apt-cache search linux-image").stdout
-        patch, micro = max(kernel_package_regex.findall(packages))
+        patch, micro = max(
+            kernel_package_regex.findall(packages), key=lambda x: int(x[0])
+        )
 
         wanted_kernel_version = self.KERNEL_VERSION_FORMAT.format(
             major=major, minor=minor, patch=patch, micro=micro
@@ -100,6 +102,14 @@ class DebianInstaller(LinuxInstaller):
             f"linux-image-cloud-amd64 "
             f"linux-headers-cloud-amd64"
         )
+        self._install_kernel_postinst_header_check()
+        logger.warning(
+            "WARNING: Kernel meta-packages (linux-image-cloud-amd64, linux-headers-cloud-amd64) have been placed on hold "
+            "(apt-mark hold) because binary installation mode is active. If you update the kernel manually or via "
+            "third-party patch management tools (such as BigFix, OS Config, or Ansible) that install explicit "
+            "linux-image-<version> packages, you MUST also install the matching linux-headers-<version> package before "
+            "rebooting so DKMS can build the NVIDIA driver module for the new kernel."
+        )
 
     def unlock_kernel_updates(self):
         """
@@ -113,8 +123,10 @@ class DebianInstaller(LinuxInstaller):
             f"linux-image-cloud-amd64 "
             f"linux-headers-cloud-amd64"
         )
+        self._remove_kernel_postinst_header_check()
 
     def _repo_uninstall_driver(self):
+        self.run("apt-mark unhold nvidia-open", check=False)
         self.run("apt-get remove -y nvidia-open")
 
     def _repo_install_driver(

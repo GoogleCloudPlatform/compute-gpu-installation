@@ -13,7 +13,7 @@
 # limitations under the License.
 import pathlib
 import sys
-from typing import Optional
+from typing import Optional, Tuple
 
 from config import (
     NVIDIA_DEB_REPO_KEYRING_URL,
@@ -30,6 +30,32 @@ class UbuntuInstaller(LinuxInstaller):
 
     DKMS_MOK_PUB = pathlib.Path("/var/lib/shim-signed/mok/MOK.der")
     DKMS_MOK_KEY = pathlib.Path("/var/lib/shim-signed/mok/MOK.priv")
+
+    def _get_kernel_meta_packages(self) -> Tuple[str, str]:
+        """
+        Derives the Ubuntu kernel image and headers meta-packages from the running
+        kernel flavor (e.g. '6.8.0-1065-gcp' -> 'linux-image-gcp', 'linux-headers-gcp').
+        """
+        flavor = (
+            self.kernel_version.rsplit("-", 1)[-1]
+            if "-" in self.kernel_version
+            else "gcp"
+        )
+        return f"linux-image-{flavor}", f"linux-headers-{flavor}"
+
+    def _get_driver_package(self) -> str:
+        """
+        Returns the appropriate Ubuntu repository driver package for the detected OS version.
+        """
+        system, version = self._detect_linux_distro()
+        assert system == System.Ubuntu
+        if version not in ("22.04", "24.04", "26.04"):
+            raise RuntimeError(
+                f"The 'repo' mode is not available for Ubuntu {version}."
+            )
+        if version in ("24.04", "26.04"):
+            return "nvidia-driver-open"
+        return "nvidia-open"
 
     @checkpoint_decorator("add_nvidia_repo", "NVIDIA repository already added.")
     def _add_nvidia_repo(self):
@@ -51,12 +77,24 @@ class UbuntuInstaller(LinuxInstaller):
     @checkpoint_decorator("prerequisites", "System preparations already done.")
     def _install_prerequisites(self):
         """
-        Installs packages required for the proper driver installation on Debian.
+        Installs packages required for the proper driver installation on Ubuntu.
         """
         self.run("apt-get update")
 
-        pkgs = ['linux-image-gcp', 'linux-headers-gcp', 'libc-dev', 'gcc', 'make', 'dkms', 'pciutils',
-                'software-properties-common', 'cmake', 'git', 'g++']
+        image_meta_pkg, headers_meta_pkg = self._get_kernel_meta_packages()
+        pkgs = [
+            image_meta_pkg,
+            headers_meta_pkg,
+            'libc-dev',
+            'gcc',
+            'make',
+            'dkms',
+            'pciutils',
+            'software-properties-common',
+            'cmake',
+            'git',
+            'g++',
+        ]
 
         self.run(
             f"apt-get install -y {' '.join(pkgs)}"
@@ -68,12 +106,21 @@ class UbuntuInstaller(LinuxInstaller):
         Marks kernel related packages, so they don't get auto-updated. This would cause the driver to stop working.
         """
         logger.info("Locking kernel updates...")
+        image_meta_pkg, headers_meta_pkg = self._get_kernel_meta_packages()
         self.run(
             f"apt-mark hold "
-            f"linux-image-gcp "
-            f"linux-headers-gcp "
+            f"{image_meta_pkg} "
+            f"{headers_meta_pkg} "
             f"linux-image-{self.kernel_version} "
             f"linux-headers-{self.kernel_version}"
+        )
+        self._install_kernel_postinst_header_check()
+        logger.warning(
+            f"WARNING: Kernel meta-packages ({image_meta_pkg}, {headers_meta_pkg}) have been placed on hold (apt-mark hold) "
+            f"because binary installation mode is active. If you update the kernel manually or via third-party patch "
+            f"management tools (such as BigFix, OS Config, or Ansible) that install explicit linux-image-<version> packages, "
+            f"you MUST also install the matching linux-headers-<version> package before rebooting so DKMS can build the "
+            f"NVIDIA driver module for the new kernel."
         )
 
     def unlock_kernel_updates(self):
@@ -81,13 +128,15 @@ class UbuntuInstaller(LinuxInstaller):
         Allows the kernel related packages to be upgraded.
         """
         logger.info("Unlocking kernel updates...")
+        image_meta_pkg, headers_meta_pkg = self._get_kernel_meta_packages()
         self.run(
             f"apt-mark unhold "
-            f"linux-image-gcp "
-            f"linux-headers-gcp "
+            f"{image_meta_pkg} "
+            f"{headers_meta_pkg} "
             f"linux-image-{self.kernel_version} "
             f"linux-headers-{self.kernel_version}"
         )
+        self._remove_kernel_postinst_header_check()
 
     def _repo_install_driver(
         self,
@@ -95,23 +144,13 @@ class UbuntuInstaller(LinuxInstaller):
         secure_boot_private_key: Optional[pathlib.Path] = None,
         branch: str = "prod",
     ):
-        system, version = self._detect_linux_distro()
-        assert system == System.Ubuntu
-        if version not in ("22.04", "24.04", "26.04"):
-            raise RuntimeError(
-                f"The 'repo' mode is not available for Ubuntu {version}."
-            )
+        driver_pkg = self._get_driver_package()
         if secure_boot_public_key and secure_boot_private_key:
             if secure_boot_public_key.exists() and secure_boot_private_key.exists():
                 self.place_custom_dkms_signing_keys(
                     secure_boot_public_key=secure_boot_public_key,
                     secure_boot_private_key=secure_boot_private_key,
                 )
-
-        if version in ("24.04", "26.04"):
-            driver_pkg = "nvidia-driver-open"
-        else:
-            driver_pkg = "nvidia-open"
 
         try:
             logger.info("Installing GPU driver...")
@@ -122,7 +161,9 @@ class UbuntuInstaller(LinuxInstaller):
                 self.remove_custom_dkms_signing_keys()
 
     def _repo_uninstall_driver(self):
-        self.run("apt-get remove -y nvidia-open")
+        driver_pkg = self._get_driver_package()
+        self.run(f"apt-mark unhold {driver_pkg}", check=False)
+        self.run(f"apt-get remove -y {driver_pkg}")
 
     def _install_cuda_repo(self, branch: str):
         """

@@ -84,6 +84,12 @@ class DNFSystemInstaller(LinuxInstaller, metaclass=abc.ABCMeta):
             logger.info(
                 "Kernel updates blocked by `exclude` entry in /etc/dnf/dnf.conf"
             )
+            logger.warning(
+                "WARNING: Kernel packages (kernel*) have been excluded in /etc/dnf/dnf.conf because binary installation "
+                "mode is active. If you update the kernel manually or via third-party patch management tools, you MUST "
+                "also install the matching kernel-devel-<version> and kernel-headers-<version> packages so DKMS can "
+                "build the NVIDIA driver module for the new kernel."
+            )
 
     def unlock_kernel_updates(self):
         """Remove `kernel*` from exclusion list in /etc/dnf/dnf.conf"""
