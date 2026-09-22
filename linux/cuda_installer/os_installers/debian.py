@@ -14,7 +14,7 @@
 import os
 import pathlib
 import re
-from typing import Optional
+from typing import Optional, Tuple
 
 from config import (
     NVIDIA_DEB_REPO_KEYRING_URL,
@@ -70,9 +70,13 @@ class DebianInstaller(LinuxInstaller):
 
         # Find the newest version of kernel to update to, but staying with the same major version
         packages = self.run("apt-cache search linux-image").stdout
-        patch, micro = max(
-            kernel_package_regex.findall(packages), key=lambda x: int(x[0])
-        )
+        matches = kernel_package_regex.findall(packages)
+        if not matches:
+            raise RuntimeError(
+                f"No {major}.{minor} kernel packages found in apt-cache search output. "
+                f"The kernel package naming convention may have changed."
+            )
+        patch, micro = max(matches, key=self._kernel_version_key)
 
         wanted_kernel_version = self.KERNEL_VERSION_FORMAT.format(
             major=major, minor=minor, patch=patch, micro=micro
@@ -89,6 +93,21 @@ class DebianInstaller(LinuxInstaller):
             f"pciutils gcc make dkms cmake git"
         )
         raise RebootRequired
+
+    @staticmethod
+    def _kernel_version_key(match: Tuple[str, str]) -> Tuple[int, Tuple[int, ...]]:
+        """
+        Sort key for kernel package matches, comparing numerically rather than
+        as strings. String ordering ranks 6.12.96 above 6.12.105, and ABI 9
+        above ABI 21.
+
+        `micro` is either "-<abi>" (Debian 12) or "+deb<release>[+<rev>]"
+        (Debian 13); both reduce to their integer components. The two forms
+        never coexist for a given release, so they are not compared to
+        each other.
+        """
+        patch, micro = match
+        return int(patch), tuple(int(part) for part in re.findall(r"\d+", micro))
 
     def lock_kernel_updates(self):
         """
