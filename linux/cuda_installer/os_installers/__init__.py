@@ -489,6 +489,11 @@ fi
                 + "${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}\n"
             )
 
+        # Make sure /usr/local/cuda/bin/nvcc links to nvcc binary
+        if not pathlib.Path("/usr/local/cuda/bin/nvcc").exists() and pathlib.Path('/usr/bin/nvcc').exists():
+            pathlib.Path("/usr/local/cuda/bin").mkdir(parents=True, exist_ok=True)
+            pathlib.Path("/usr/local/cuda/bin/nvcc").symlink_to("/usr/bin/nvcc")
+
         with open(self.BASHRC_PATH, mode="r+") as global_bashrc:
             logger.info(
                 f"Updating {self.BASHRC_PATH} to source {CUDA_PROFILE_FILENAME}..."

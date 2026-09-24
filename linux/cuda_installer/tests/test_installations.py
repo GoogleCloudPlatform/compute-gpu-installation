@@ -284,10 +284,10 @@ def _test_setup(
     instance.scheduling.on_host_maintenance = (
         compute_v1.Scheduling.OnHostMaintenance.TERMINATE.name
     )
-    instance.scheduling.preemptible = False
+    instance.scheduling.provisioning_model = compute_v1.Scheduling.ProvisioningModel.SPOT.name
     instance.scheduling.max_run_duration = compute_v1.Duration(
-        {"seconds": 3600}
-    )  # 1 hour
+        {"seconds": 4*3600}
+    )  # 4 hours
     instance.scheduling.instance_termination_action = (
         compute_v1.Scheduling.InstanceTerminationAction.DELETE.name
     )
