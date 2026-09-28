@@ -82,6 +82,18 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
 
     DKMS_MOK_PUB = pathlib.Path("/var/lib/dkms/mok.pub")
     DKMS_MOK_KEY = pathlib.Path("/var/lib/dkms/mok.key")
+    KERNEL_POSTINST_HOOK_PATH = pathlib.Path(
+        "/etc/kernel/postinst.d/zz-gcp-gpu-header-check"
+    )
+    KERNEL_POSTINST_HOOK_CONTENT = """#!/bin/sh
+# Installed by Google Cloud compute-gpu-installation (binary mode)
+KERNEL_VERSION="$1"
+if [ ! -d "/lib/modules/${KERNEL_VERSION}/build" ]; then
+    logger -t gcp-gpu-installer -p user.warning \\
+      "WARNING: Kernel ${KERNEL_VERSION} was installed without linux-headers-${KERNEL_VERSION}. NVIDIA GPU modules will fail to load on reboot unless linux-headers-${KERNEL_VERSION} is installed."
+    echo "WARNING: [gcp-gpu-installer] Kernel ${KERNEL_VERSION} is missing linux-headers-${KERNEL_VERSION}! Install linux-headers-${KERNEL_VERSION} before rebooting to prevent GPU driver outage." >&2
+fi
+"""
 
     def __init__(self):
         self.kernel_version = self.run("uname -r", silent=True).stdout
@@ -122,6 +134,39 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         Allows the kernel related packages to be upgraded.
         """
         pass
+
+    def _install_kernel_postinst_header_check(self):
+        """
+        Installs a kernel post-install hook (/etc/kernel/postinst.d/zz-gcp-gpu-header-check)
+        that logs a warning to syslog and stderr if a new kernel image is installed without
+        matching linux-headers.
+        """
+        try:
+            self.KERNEL_POSTINST_HOOK_PATH.parent.mkdir(parents=True, exist_ok=True)
+            self.KERNEL_POSTINST_HOOK_PATH.write_text(self.KERNEL_POSTINST_HOOK_CONTENT)
+            self.KERNEL_POSTINST_HOOK_PATH.chmod(0o755)
+            logger.info(
+                f"Installed kernel header check hook at {self.KERNEL_POSTINST_HOOK_PATH}"
+            )
+        except OSError as e:
+            logger.warning(
+                f"Could not install kernel post-install header check hook at {self.KERNEL_POSTINST_HOOK_PATH}: {e}"
+            )
+
+    def _remove_kernel_postinst_header_check(self):
+        """
+        Removes the kernel post-install header check hook if present.
+        """
+        try:
+            if self.KERNEL_POSTINST_HOOK_PATH.exists():
+                self.KERNEL_POSTINST_HOOK_PATH.unlink()
+                logger.info(
+                    f"Removed kernel header check hook at {self.KERNEL_POSTINST_HOOK_PATH}"
+                )
+        except OSError as e:
+            logger.warning(
+                f"Could not remove kernel post-install header check hook at {self.KERNEL_POSTINST_HOOK_PATH}: {e}"
+            )
 
     def _backup_dkms_mok_keys(self):
         logger.info("Moving previous keys to a backup file...")
@@ -176,7 +221,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         On the second run, it will proceed to download proper installer and install the driver. When it's done, `nvidia-smi`
         should be available in the system and the drivers are installed.
 
-        It also triggers kernel packages lock in the system, so the driver is not broken by auto-updates.
+        In binary installation mode, it also triggers kernel packages lock in the system, so the driver is not broken by auto-updates.
         """
         if self.verify_driver():
             logger.info("GPU driver already installed.")
@@ -228,6 +273,7 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
         installer_path = self.download_driver_installer(branch, special_machine_type, force_version)
 
         logger.info("Installing GPU drivers for your device...")
+        installer_env = {**os.environ, "TMPDIR": "/var/tmp"}
         if (
             secure_boot_public_key
             and secure_boot_private_key
@@ -238,11 +284,16 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 f"Using secure boot keys from {secure_boot_public_key.absolute()} and {secure_boot_private_key.absolute()}"
             )
             self.run(
-                f"sh {installer_path} -s --module-signing-secret-key={secure_boot_private_key.absolute()} --module-signing-public-key={secure_boot_public_key.absolute()}",
+                f"sh {installer_path} -s --dkms --tmpdir=/var/tmp --module-signing-secret-key={secure_boot_private_key.absolute()} --module-signing-public-key={secure_boot_public_key.absolute()}",
                 check=True,
+                environment=installer_env,
             )
         else:
-            self.run(f"sh {installer_path} -s", check=True)
+            self.run(
+                f"sh {installer_path} -s --dkms --tmpdir=/var/tmp",
+                check=True,
+                environment=installer_env,
+            )
 
         if special_machine_type is SpecialMachine.vWS:
             self._disable_gsp_firmware()
@@ -437,6 +488,11 @@ class LinuxInstaller(metaclass=abc.ABCMeta):
                 + cuda_lib_folder
                 + "${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}\n"
             )
+
+        # Make sure /usr/local/cuda/bin/nvcc links to nvcc binary
+        if not pathlib.Path("/usr/local/cuda/bin/nvcc").exists() and pathlib.Path('/usr/bin/nvcc').exists():
+            pathlib.Path("/usr/local/cuda/bin").mkdir(parents=True, exist_ok=True)
+            pathlib.Path("/usr/local/cuda/bin/nvcc").symlink_to("/usr/bin/nvcc")
 
         with open(self.BASHRC_PATH, mode="r+") as global_bashrc:
             logger.info(

@@ -121,6 +121,10 @@ CUDA_SAMPLES = {
     "13.3": {
         "samples_hash": "fab59f405d6c0b87395ce6fc1d46d3f559c380c9a2704ab14d6dc0d3ce1cff16",
         "samples_folder": "cpp",
+    },
+    "13.4": {
+        "samples_hash": "1206bf1f1bc1c4176af17826a7c72ac94c4caf0a4fed7b61379f0041965ed707",
+        "samples_folder": "cpp",
     }
 }
 

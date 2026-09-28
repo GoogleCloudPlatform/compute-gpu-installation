@@ -67,7 +67,7 @@ GPU_QUOTA_SEMAPHORES = {
     "vG4": BoundedSemaphore(8)
 }
 ZONES = {
-    "L4": ("us-central1-a",),
+    "L4": ("europe-west6-c", "me-central2-c"),
     "A100": ("us-central1-f",),
     "P4": ("us-central1-a",),
     "T4": (
@@ -96,7 +96,7 @@ ZONES = {
     "vG4": ("us-central1-b",),
 }
 MACHINE_TYPES = {
-    "L4": "g2-standard-4",
+    "L4": "g2-standard-8",
     "A100": "a2-highgpu-1g",
     "P4": "n1-standard-8",
     "T4": "n1-standard-16",
