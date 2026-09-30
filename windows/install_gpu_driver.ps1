@@ -19,8 +19,8 @@ $ErrorActionPreference = "Stop"
 # --- Constants & Config ---
 $Drivers = @{
     "Normal" = @{
-        "Filename" = "582.53_grid_win10_win11_server2022_server_2025_dch_64bit_international.exe"
-        "Hash"     = "6f1210b459efc7f29db930103533c3de9b93c2afdfa8d7b4871640c6b8638c0b"
+        "Filename" = "596.86_grid_win10_win11_server2022_server_2025_dch_64bit_international.exe"
+        "Hash"     = "4b926d9e8f6ba1f391da436a1724e1d104081d6ea6a9604c77738caa201a9627"
     }
     "vGPU"   = @{
         "Filename" = "582.53_grid_win10_win11_server2022_server2025_dch_64bit_international_gcp_swl.exe"
