@@ -14,7 +14,6 @@
 import itertools
 import os
 import random
-import re
 import subprocess
 import sys
 import tempfile
@@ -361,14 +360,16 @@ def _test_setup(
         return _test_body(zone, instance_name, gpu, ssh_key, branch, expected_version)
     finally:
         try:
-            # print("This is where I'd delete the instance, but we keep it for debugging.")
-            instance_client = compute_v1.InstancesClient()
-            operation = instance_client.delete(
-                project=PROJECT, zone=zone, instance=instance_name
-            )
-            operation.result()
-            if operation.error:
-                pytest.fail(f"Could not delete instance: {operation.error_message}")
+            if os.getenv("CUDA_INSTALLER_KEEP_INSTANCES", False):
+                print("This is where I'd delete the instance, but we keep it for debugging.")
+            else:
+                instance_client = compute_v1.InstancesClient()
+                operation = instance_client.delete(
+                    project=PROJECT, zone=zone, instance=instance_name
+                )
+                operation.result()
+                if operation.error:
+                    pytest.fail(f"Could not delete instance: {operation.error_message}")
         except google.api_core.exceptions.NotFound:
             # The instance was not properly created at all.
             pass

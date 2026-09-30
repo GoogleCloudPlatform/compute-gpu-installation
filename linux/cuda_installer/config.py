@@ -32,7 +32,7 @@ except PermissionError:
 if os.getenv("CUDA_INSTALLER_DEBUG", False) == "True":
     VERSION = "debug"
 else:
-    VERSION = "v1.9.1"
+    VERSION = "v1.9.2"
 
 class SpecialMachine(Enum):
     Normal = 0
@@ -43,10 +43,10 @@ class SpecialMachine(Enum):
 VERSION_MAP = {
     "prod": {
         "driver": {
-            "version": "595.84",
+            "version": "595.91.07",
         },
         "rtx-driver": {
-            "version": "595.71.05-grid",
+            "version": "595.91.07-grid",
         },
         "vgpu-driver": {
             "version": "580.159.03-grid-gcp",
@@ -54,33 +54,32 @@ VERSION_MAP = {
         "cuda": {
             "major": "13",
             "minor": "2",
-            "patch": "1",
-            "driver": "595.58.03",
-            "hash": "5514a3fe7bcea92b25073c7c100c3e64e7961a7e1dbad6955adb8b59806053f0",
+            "patch": "2",
+            "driver": "595.71.05",
+            "hash": "ba1f73f356810870272e3bfa25fcde98ffe1abb0f603fb65fe3461df7fa85c22",
         },
     },
     "nfb": {
         "driver": {
-            "version": "610.43.02",
+            "version": "615.71.09",
         },
         "cuda": {
             "major": "13",
-            "minor": "3",
-            "patch": "0",
-            "driver": "610.43.02",
-            "hash": "5f79488b57fe6936bc95a56f9b7e2838ab2f2ee3313b1008942206eebe06352d",
+            "minor": "4",
+            "patch": "2",
+            "hash": "528ab064b61c7620d1620c1f331f30712409f0bdf4b8ed775f872eef96688dbd",
         },
     },
     "lts": {
         "driver": {
-            "version": "580.159.04",
+            "version": "580.178.04",
         },
         "cuda": {
             "major": "13",
             "minor": "0",
-            "patch": "2",
-            "driver": "580.95.05",
-            "hash": "81a5d0d0870ba2022efb0a531dcc60adbdc2bbff7b3ef19d6fd6d8105406c775",
+            "patch": "3",
+            "driver": "580.126.20",
+            "hash": "79c82c6529d2adfc322336f37b2a7a856655cd739b4803d0af7344db5a69638b",
         },
     },
 }
@@ -170,6 +169,9 @@ DRIVER_GS_URI = "gs://compute-gpu-installation-{MULTIREGION}/drivers/NVIDIA-Linu
 
 CUDA_TOOLKIT_URL = "https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_MAJOR}.{CUDA_MINOR}.{CUDA_PATCH}_{CUDA_DRIVER_VERSION}_linux.run"
 CUDA_TOOLKIT_GS_URI = "gs://compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_MAJOR}.{CUDA_MINOR}.{CUDA_PATCH}_{CUDA_DRIVER_VERSION}_linux.run"
+
+CUDA_TOOLKIT_NO_DRIVER_URL = "https://storage.googleapis.com/compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_MAJOR}.{CUDA_MINOR}.{CUDA_PATCH}_linux.run"
+CUDA_TOOLKIT_NO_DRIVER_GS_URI = "gs://compute-gpu-installation-{MULTIREGION}/cuda_toolkits/cuda_{CUDA_MAJOR}.{CUDA_MINOR}.{CUDA_PATCH}_linux.run"
 
 # Repo install settings
 

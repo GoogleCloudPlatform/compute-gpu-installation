@@ -31,6 +31,8 @@ import config
 from config import (
     CUDA_TOOLKIT_URL,
     CUDA_TOOLKIT_GS_URI,
+    CUDA_TOOLKIT_NO_DRIVER_URL,
+    CUDA_TOOLKIT_NO_DRIVER_GS_URI,
     DRIVER_URL,
     DRIVER_GS_URI,
     CUDA_PROFILE_FILENAME,
@@ -739,27 +741,41 @@ fi
         cuda_major = config.VERSION_MAP[branch]["cuda"]["major"]
         cuda_minor = config.VERSION_MAP[branch]["cuda"]["minor"]
         cuda_patch = config.VERSION_MAP[branch]["cuda"]["patch"]
-        driver_version = config.VERSION_MAP[branch]["cuda"]["driver"]
+        if "driver" in config.VERSION_MAP[branch]["cuda"]:
+            driver_version = config.VERSION_MAP[branch]["cuda"]["driver"]
+            download_url = CUDA_TOOLKIT_URL.format(
+                MULTIREGION=config.MULTIREGION,
+                CUDA_MAJOR=cuda_major,
+                CUDA_MINOR=cuda_minor,
+                CUDA_PATCH=cuda_patch,
+                CUDA_DRIVER_VERSION=driver_version,
+            )
+            gs_uri = CUDA_TOOLKIT_GS_URI.format(
+                MULTIREGION=config.MULTIREGION,
+                CUDA_MAJOR=cuda_major,
+                CUDA_MINOR=cuda_minor,
+                CUDA_PATCH=cuda_patch,
+                CUDA_DRIVER_VERSION=driver_version,
+            )
+        else:
+            download_url = CUDA_TOOLKIT_NO_DRIVER_URL.format(
+                MULTIREGION=config.MULTIREGION,
+                CUDA_MAJOR=cuda_major,
+                CUDA_MINOR=cuda_minor,
+                CUDA_PATCH=cuda_patch)
+            gs_uri = CUDA_TOOLKIT_NO_DRIVER_GS_URI.format(
+                MULTIREGION=config.MULTIREGION,
+                CUDA_MAJOR=cuda_major,
+                CUDA_MINOR=cuda_minor,
+                CUDA_PATCH=cuda_patch)
         logger.info(
             f"Downloading CUDA installation kit for {branch} branch ({cuda_major}.{cuda_minor}.{cuda_patch})..."
         )
 
         return self.download_file(
-            CUDA_TOOLKIT_URL.format(
-                MULTIREGION=config.MULTIREGION,
-                CUDA_MAJOR=cuda_major,
-                CUDA_MINOR=cuda_minor,
-                CUDA_PATCH=cuda_patch,
-                CUDA_DRIVER_VERSION=driver_version,
-            ),
+            download_url,
             config.VERSION_MAP[branch]["cuda"]["hash"],
-            CUDA_TOOLKIT_GS_URI.format(
-                MULTIREGION=config.MULTIREGION,
-                CUDA_MAJOR=cuda_major,
-                CUDA_MINOR=cuda_minor,
-                CUDA_PATCH=cuda_patch,
-                CUDA_DRIVER_VERSION=driver_version,
-            ),
+            gs_uri,
         )
 
     def download_driver_installer(
